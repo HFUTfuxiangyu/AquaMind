@@ -1,0 +1,1675 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>智慧水务AI大脑 | AquaMind Pro</title>
+    <link rel="stylesheet" href="assets/css/system-fonts.css">
+    <link rel="stylesheet" href="assets/css/font-awesome.min.css">
+    <!-- 公共样式文件 -->
+    <link rel="stylesheet" href="styles/theme.css">
+    <link rel="stylesheet" href="styles/layout.css">
+    <link rel="stylesheet" href="styles/ai-assistant.css">
+    <script src="assets/js/echarts.min.js"></script>
+    <script src="assets/js/papaparse.min.js"></script>
+    <script src="assets/js/html2canvas.min.js"></script>
+    <script src="assets/js/jspdf.umd.min.js"></script>
+    <script src="components/auth.js"></script>
+    <script src="shared-data.js"></script>
+    <script src="components/sidebar-nav.js"></script>
+    <script src="components/ai-assistant.js"></script>
+    <script src="components/data-status.js"></script>
+    <style>
+        /* 页面特定样式 - 公共样式已在 theme.css 和 layout.css 中定义 */
+
+        /* 移除与布局系统冲突的样式 */
+        /* body, app-container, top-nav, nav-links 等由 layout.css 管理 */
+
+        /* 聊天面板 */
+        
+        /* 主布局 - 适应新的侧边栏布局 */
+        .main-layout {
+            display: flex;
+            gap: 20px;
+            min-height: 600px;
+        }
+        
+        /* 聊天面板 */
+        .chat-panel {
+            width: 400px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .chat-header { 
+            padding: 20px 20px 12px; 
+            border-bottom: 1px solid var(--border); 
+        }
+        .chat-header h3 { 
+            font-size: 18px; 
+            font-weight: 600; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            color: var(--text-primary);
+        }
+        .model-badge {
+            background: var(--accent-primary);
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            color: white;
+        }
+        
+        .chat-messages { 
+            flex: 1; 
+            overflow-y: auto; 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 20px; 
+        }
+        
+        .message { 
+            display: flex; 
+            flex-direction: column; 
+            max-width: 100%; 
+        }
+        .message.user { align-items: flex-end; }
+        .message.ai { align-items: flex-start; }
+        
+        .bubble {
+            max-width: 92%;
+            padding: 12px 18px;
+            border-radius: 8px;
+            font-size: 13.5px;
+            line-height: 1.5;
+        }
+        .user .bubble {
+            background: var(--accent-primary);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        .ai .bubble { 
+            background: var(--accent-light); 
+            color: var(--text-primary); 
+            border-bottom-left-radius: 4px; 
+            border: 1px solid var(--border); 
+        }
+        
+        .chat-input-area { 
+            padding: 16px 20px 24px; 
+            border-top: 1px solid var(--border); 
+        }
+        
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+            background: var(--bg-primary);
+            border-radius: 6px;
+            padding: 6px 6px 6px 20px;
+            border: 1px solid var(--border);
+        }
+        .input-wrapper input { 
+            flex: 1; 
+            background: transparent; 
+            border: none; 
+            color: var(--text-primary); 
+            font-size: 14px; 
+            outline: none; 
+        }
+        .input-wrapper input::placeholder { color: var(--text-secondary); }
+        
+        .voice-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .voice-btn:hover { background: var(--accent-light); color: var(--accent); }
+        .voice-btn.recording {
+            background: var(--danger);
+            color: white;
+            animation: recording-pulse 1s infinite;
+        }
+        @keyframes recording-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .input-wrapper button {
+            background: var(--accent-primary);
+            border: none;
+            padding: 8px 24px;
+            border-radius: 6px;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        
+        .quick-actions { 
+            display: flex; 
+            gap: 8px; 
+            margin-top: 12px; 
+            flex-wrap: wrap; 
+        }
+        .quick-chip {
+            background: var(--accent-light);
+            padding: 5px 14px;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            transition: 0.2s;
+            color: var(--accent);
+        }
+        .quick-chip:hover { background: var(--accent); color: white; }
+        
+        /* 可视化面板 */
+        .viz-panel { 
+            flex: 1; 
+            overflow-y: auto; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 18px; 
+        }
+        
+        /* 风险警告条 */
+        .risk-banner {
+            background: var(--status-danger);
+            color: white;
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        .risk-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .risk-content i {
+            font-size: 1.25rem;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .risk-banner button {
+            background: white;
+            color: #ef4444;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .risk-banner button:hover { background: rgba(255,255,255,0.9); }
+
+        /* 统计卡片 */
+        .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: 8px;
+            padding: 18px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+        }
+        .stat-title { 
+            font-size: 12px; 
+            color: var(--text-secondary); 
+            margin-bottom: 8px; 
+        }
+        .stat-value { 
+            font-size: 32px; 
+            font-weight: 800; 
+            letter-spacing: -1px; 
+            color: var(--text-primary); 
+        }
+        .stat-value.no-data { font-size: 18px; color: var(--text-secondary); font-weight: 400; }
+        .stat-trend { font-size: 11px; margin-top: 6px; }
+        .no-data-text { color: var(--text-secondary); }
+        
+        /* 图表行 */
+        .charts-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+        .chart-card {
+            background: var(--bg-card);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        /* 粒度控件 */
+        .granularity-controls {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-primary);
+            padding: 4px;
+            border-radius: 8px;
+        }
+        .granularity-btn {
+            padding: 6px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .granularity-btn.active {
+            background: var(--bg-card);
+            color: var(--accent);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .chart-container { height: 220px; width: 100%; }
+        .data-table-card {
+            background: var(--bg-card);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        /* 设备网格 */
+        .device-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .device-card {
+            background: var(--bg-primary);
+            border-radius: 8px;
+            padding: 16px;
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+        .device-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .device-name { font-size: 15px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary); }
+        .device-health-bar {
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        .device-health-fill { height: 100%; border-radius: 3px; transition: all 0.3s; }
+        .device-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+        .device-info span { color: var(--text-secondary); }
+        .device-info .status-good { color: var(--success); font-weight: 600; }
+        .device-info .status-warning { color: var(--warning); font-weight: 600; }
+        .device-info .status-danger { color: var(--danger); font-weight: 600; }
+        
+        .footer-status { 
+            padding: 10px 28px; 
+            background: var(--bg-card); 
+            border-top: 1px solid var(--border); 
+            font-size: 11px; 
+            display: flex; 
+            justify-content: space-between; 
+            color: var(--text-secondary); 
+        }
+        
+        button.small-outline {
+            background: transparent;
+            border: 1px solid var(--accent);
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            color: var(--accent);
+            transition: all 0.2s;
+        }
+        button.small-outline:hover { background: var(--accent); color: white; }
+        
+        /* 模态框 */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-overlay.active { display: flex; }
+        
+        .modal {
+            background: var(--bg-card);
+            border-radius: 8px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .modal-close {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .modal-close:hover { background: var(--border); }
+        
+        .modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-secondary {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        .btn-secondary:hover { background: var(--border); }
+        .btn-primary {
+            background: var(--accent-primary);
+            color: white;
+        }
+        .btn-primary:hover { opacity: 0.9; }
+
+        .report-content {
+            background: white;
+            padding: 32px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        .report-header {
+            text-align: center;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 2px solid var(--accent);
+        }
+        .report-header h1 {
+            font-size: 24px;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+        .report-header p { color: var(--text-secondary); }
+        .report-section { margin-bottom: 24px; }
+        .report-section h3 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .report-table th, .report-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        .report-table th {
+            background: var(--bg-primary);
+            font-weight: 600;
+        }
+        
+        /* 引导弹窗 */
+        .onboarding-step {
+            text-align: center;
+            padding: 40px;
+        }
+        .onboarding-step i {
+            font-size: 64px;
+            color: var(--accent);
+            margin-bottom: 24px;
+        }
+        .onboarding-step h2 {
+            font-size: 24px;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+        .onboarding-step p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        .onboarding-dots {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 32px;
+        }
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .dot.active {
+            background: var(--accent);
+            width: 24px;
+            border-radius: 5px;
+        }
+        
+        /* 打印样式 */
+        @media print {
+            .sidebar, .top-bar, .chat-panel, .risk-banner,
+            .granularity-controls, .voice-btn, .modal-footer,
+            .quick-actions {
+                display: none !important;
+            }
+            .app-wrapper {
+                display: block;
+            }
+            .main-content {
+                margin-left: 0 !important;
+            }
+            .modal-body { overflow: visible; }
+            .report-content { border: none; }
+            .modal-overlay { position: static; display: block !important; }
+            .modal { max-width: 100%; width: 100%; box-shadow: none; }
+        }
+        /* 驾驶舱协调布局 */
+        .main-layout { display:block; min-height:auto; }
+        .viz-panel { overflow:visible; gap:16px; }
+        .chat-panel { position:fixed; top:70px; right:18px; bottom:18px; width:min(400px,calc(100vw - 36px)); z-index:2200; transform:translateX(calc(100% + 36px)); transition:transform .24s ease; box-shadow:0 24px 70px rgba(15,23,42,.24); }
+        .chat-panel.open { transform:translateX(0); }
+        .cockpit-ai-toggle { position:fixed; right:22px; bottom:24px; z-index:2190; width:52px; height:52px; border:0; border-radius:50%; color:#fff; background:linear-gradient(135deg,#0e7b9e,#1baa7a); box-shadow:0 8px 22px rgba(15,139,158,.25); cursor:pointer; font-size:19px; }
+        .cockpit-toolbar { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:14px 16px; background:#fff; border:1px solid #e2ebee; border-radius:8px; box-shadow:0 8px 24px rgba(15,23,42,.045); }
+        .cockpit-toolbar-main { display:flex; align-items:center; gap:10px; min-width:0; }
+        .cockpit-toolbar-main strong { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .cockpit-toolbar-meta { color:#64748b; font-size:12px; }
+        .cockpit-toolbar-actions { display:flex; gap:8px; flex-wrap:wrap; }
+        .operations-summary,.stats-row { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:18px; align-items:stretch; width:100%; }
+        .summary-primary,.summary-cell { min-width:0; box-sizing:border-box; background:#fff; border:1px solid #e2ebee; border-radius:8px; padding:14px 16px; }
+        .summary-primary,.summary-cell,.stat-card { height:100%; }
+        .summary-primary { border-left:4px solid #0f8b9e; }
+        .summary-label { color:#64748b; font-size:11px; margin-bottom:5px; }
+        .summary-value { color:#0f172a; font-size:17px; font-weight:700; }
+        .summary-note { color:#64748b; font-size:11px; margin-top:4px; }
+        .chart-card,.data-table-card,.stat-card { box-shadow:none; border-color:#e2ebee; }
+        .data-confidence { padding:18px; }
+        .data-confidence-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:12px; }
+        .data-confidence-item { padding:10px; background:#f4f8f9; border-radius:7px; }
+        .data-confidence-item span { display:block; color:#64748b; font-size:11px; }
+        .data-confidence-item strong { font-size:14px; }
+        .cockpit-chart-expand { width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center; border:1px solid #cbdde2; border-radius:6px; background:#fff; color:#0f8b9e; cursor:pointer; }
+        .cockpit-chart-expand:hover { background:#eef9fa; border-color:#0f8b9e; }
+        .cockpit-chart-modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:24px; background:rgba(15,23,42,.62); z-index:2300; }
+        .cockpit-chart-modal.open { display:flex; }
+        .cockpit-chart-dialog { width:min(1180px,96vw); height:min(760px,90vh); background:#fff; border-radius:12px; box-shadow:0 28px 80px rgba(15,23,42,.3); display:flex; flex-direction:column; overflow:hidden; }
+        .cockpit-chart-head { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid #e5eef3; }
+        .cockpit-chart-head h3 { margin:0 0 4px; }
+        .cockpit-chart-source { color:#64748b; font-size:12px; }
+        .cockpit-chart-close { border:0; background:transparent; color:#64748b; font-size:20px; cursor:pointer; }
+        .cockpit-chart-body { flex:1; min-height:0; padding:16px 20px 20px; }
+        #expandedCockpitChart { width:100%; height:100%; }
+        .cockpit-key-chart { grid-template-columns:1fr; }
+        .cockpit-key-chart .chart-card:nth-child(2),.cockpit-confidence-row .chart-card:first-child,.cockpit-detail-panel { display:none !important; }
+        .cockpit-confidence-row { grid-template-columns:1fr; }
+        .cockpit-primary-chart > div:first-child { display:none !important; }
+        .cockpit-primary-chart-title { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; color:#0f172a; font-size:16px; font-weight:700; }
+        .cockpit-risk-actions { display:none; align-items:center; gap:8px; flex-wrap:wrap; margin-top:10px; }
+        .cockpit-risk-actions.visible { display:flex; }
+        .cockpit-risk-action { border:1px solid #0f8b9e; border-radius:6px; padding:7px 12px; background:#fff; color:#0f8b9e; cursor:pointer; font-size:12px; font-weight:600; }
+        .cockpit-risk-action.primary { border-color:#0f8b9e; background:#0f8b9e; color:#fff; }
+        .cockpit-risk-action:hover { filter:brightness(.97); }
+        @media(max-width:1050px){.charts-row{grid-template-columns:1fr}}
+        @media(max-width:680px){.cockpit-toolbar{align-items:flex-start;flex-direction:column}}
+    </style>
+</head>
+<body>
+<!-- 侧边栏和顶部栏由 sidebar-nav.js 自动生成 -->
+<div class="main-layout">
+    <!-- 聊天面板 -->
+    <div class="chat-panel" id="cockpitChatPanel">
+            <div class="chat-header">
+                <h3><i class="fas fa-robot"></i> AI水务顾问 <span class="model-badge">TimeMosaic + GPT-4o</span></h3>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 6px;">自然语言对话 · 实时数据分析 · 语音输入</div>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="message ai">
+                    <div class="bubble">🌊 欢迎使用 AquaMind Pro！<br><br>请上传 CSV 文件开始使用。<br><br>支持的列名：时间、浊度、加药量、设备健康度、能耗</div>
+                </div>
+            </div>
+            <div class="chat-input-area">
+                <div class="input-wrapper">
+                    <input type="text" id="chatInput" placeholder="输入问题，例如：生成今日综合水务报告...">
+                    <button class="voice-btn" id="voiceBtn" title="语音输入">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                    <button id="sendBtn"><i class="fas fa-paper-plane"></i> 发送</button>
+                </div>
+                <div class="quick-actions">
+                    <div class="quick-chip" data-question="分析水质趋势">📊 水质趋势</div>
+                    <div class="quick-chip" data-question="优化加药方案">💊 加药优化</div>
+                    <div class="quick-chip" data-question="检查设备状态">⚙️ 设备状态</div>
+                    <div class="quick-chip" data-question="生成智能报告">📄 智能报告</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 可视化面板 -->
+        <div class="viz-panel">
+            <div class="cockpit-toolbar">
+                <div class="cockpit-toolbar-main"><i class="fas fa-database" style="color:#0f8b9e"></i><div><div class="cockpit-toolbar-meta">当前数据源</div><strong id="globalDataSource">未上传</strong><span id="currentDataSource" style="display:none">未上传</span><div class="cockpit-toolbar-meta">更新时间：<span id="updateTime">--</span> · 当前时间：<span id="clock">--</span></div></div></div>
+                <div class="cockpit-toolbar-actions"><button class="small-outline" id="uploadBtn" type="button"><i class="fas fa-upload"></i> 上传CSV</button><button class="small-outline" id="downloadBtn" type="button"><i class="fas fa-download"></i> 下载示例</button><button class="small-outline" id="reportBtn" type="button"><i class="fas fa-file-alt"></i> 运行报告</button><input type="file" id="fileInput" accept=".csv" style="display:none"><input type="file" id="globalFileInput" accept=".csv" style="display:none"></div>
+            </div>
+
+            <div class="operations-summary">
+                <div class="summary-primary"><div class="summary-label">当前运行结论</div><div class="summary-value" id="operationConclusion">等待上传运行数据</div><div class="summary-note" id="operationAction">系统不会使用模拟值填充缺失指标</div><div class="cockpit-risk-actions" id="cockpitRiskActions"><button class="cockpit-risk-action primary" id="primaryRiskAction" type="button">立即处理</button><button class="cockpit-risk-action" id="riskDetailAction" type="button">查看详情</button></div></div>
+                <div class="summary-cell"><div class="summary-label">有效记录</div><div class="summary-value" id="operationRecords">--</div><div class="summary-note">参与当前分析</div></div>
+                <div class="summary-cell"><div class="summary-label">数据完整率</div><div class="summary-value" id="operationCompleteness">--</div><div class="summary-note">核心字段有效值</div></div>
+                <div class="summary-cell"><div class="summary-label">最新数据时间</div><div class="summary-value" id="operationLatestTime">--</div><div class="summary-note" id="operationFreshness">等待数据</div></div>
+            </div>
+            <!-- 统计卡片 -->
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-title">当前浊度 (NTU)</div>
+                    <div class="stat-value no-data" id="turbidityValue">--</div>
+                    <div class="stat-trend no-data-text" id="turbidityTrend">请上传 CSV</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">当前加药量</div>
+                    <div class="stat-value no-data" id="doseValue">--</div>
+                    <div class="stat-trend no-data-text" id="doseTrend">请上传 CSV</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">设备综合健康度</div>
+                    <div class="stat-value no-data" id="healthValue">--</div>
+                    <div class="stat-trend no-data-text" id="healthTrend">请上传 CSV</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">当前数据周期能耗</div>
+                    <div class="stat-value no-data" id="savingValue">--</div>
+                    <div class="stat-trend no-data-text" id="savingTrend">请上传 CSV</div>
+                </div>
+            </div>
+
+            <!-- 图表行 -->
+            <div class="charts-row cockpit-key-chart">
+                <div class="chart-card cockpit-primary-chart" style="display: flex; padding: 0; overflow: hidden;">
+                    <div style="width: 45px; background: var(--accent-light); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 10px 0; border-right: 1px solid var(--border);">
+                        <div style="writing-mode: vertical-rl; text-orientation: mixed; font-size: 13px; font-weight: 600; color: var(--accent); letter-spacing: 2px;">
+                            <i class="fas fa-chart-line" style="margin-bottom: 8px;"></i> 浊度曲线
+                        </div>
+                    </div>
+                    <div style="flex:1;padding:15px;">
+                        <div class="cockpit-primary-chart-title"><span><i class="fas fa-chart-line" style="color:#0f8b9e"></i> 关键浊度趋势</span><small id="granularityNote" style="color:#64748b;font-size:11px;font-weight:400">标准：等待数据</small></div>
+                        <div style="display: flex; justify-content: flex-end; margin-bottom: 8px;">
+                            <div class="granularity-controls">
+                                <button class="granularity-btn" data-granularity="coarse">粗</button>
+                                <button class="granularity-btn active" data-granularity="normal">标准</button>
+                                <button class="granularity-btn" data-granularity="fine">细</button>
+                            </div><button class="cockpit-chart-expand" type="button" data-chart="turbidityChart" data-title="浊度趋势" data-source="CSV实测数据；红色虚线为 5.0 NTU 阈值" aria-label="放大浊度趋势"><i class="fas fa-expand"></i></button>
+                        </div>
+                        <div id="turbidityChart" class="chart-container" style="height: 180px;"></div>
+                    </div>
+                </div>
+                <div class="chart-card" style="display: flex; padding: 0; overflow: hidden;">
+                    <div style="width: 45px; background: var(--accent-light); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 10px 0; border-right: 1px solid var(--border);">
+                        <div style="writing-mode: vertical-rl; text-orientation: mixed; font-size: 13px; font-weight: 600; color: var(--accent); letter-spacing: 2px;">
+                            <i class="fas fa-chart-bar" style="margin-bottom: 8px;"></i> 加药成本
+                        </div>
+                    </div>
+                    <div style="flex: 1; padding: 15px;">
+                        <div style="display: flex; justify-content: flex-end; margin-bottom: 8px;">
+                            <div class="granularity-controls">
+                                <button class="granularity-btn" data-granularity="coarse">粗</button>
+                                <button class="granularity-btn active" data-granularity="normal">标准</button>
+                                <button class="granularity-btn" data-granularity="fine">细</button>
+                            </div><button class="cockpit-chart-expand" type="button" data-chart="costChart" data-title="加药量趋势" data-source="CSV实测加药量，不使用模拟成本" aria-label="放大加药量趋势"><i class="fas fa-expand"></i></button>
+                        </div>
+                        <div id="costChart" class="chart-container" style="height: 180px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 设备健康度 -->
+            <div class="data-table-card cockpit-detail-panel" style="display:flex;padding:0;overflow:hidden;min-height:380px;">
+                <div style="width: 45px; background: var(--accent-light); display: flex; flex-direction: column; justify-content: flex-start; align-items: center; padding: 20px 0; border-right: 1px solid var(--border);">
+                    <div style="writing-mode: vertical-rl; text-orientation: mixed; font-size: 13px; font-weight: 600; color: var(--accent); letter-spacing: 2px;">
+                        <i class="fas fa-microchip" style="margin-bottom: 8px;"></i> 设备健康度
+                    </div>
+                </div>
+                <div style="flex: 1; padding: 20px;">
+                    <div class="device-grid" id="deviceGrid">
+                        <!-- 动态生成 -->
+                    </div>
+                    <div style="margin-top: 20px; background: var(--accent-light); border-radius: 16px; padding: 16px; border: 1px solid var(--border); max-height: 180px; overflow-y: auto;">
+                        <i class="fas fa-brain" style="color: var(--accent);"></i> <strong>AI智能决策</strong>：<span id="aiDecision" class="no-data-text">请上传 CSV 获取维护建议</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 数据可信度 -->
+            <div class="charts-row cockpit-confidence-row">
+                <div class="chart-card" style="display: flex; padding: 0; overflow: hidden;">
+                    <div style="width: 45px; background: var(--accent-light); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 10px 0; border-right: 1px solid var(--border);">
+                        <div style="writing-mode: vertical-rl; text-orientation: mixed; font-size: 13px; font-weight: 600; color: var(--accent); letter-spacing: 2px;">
+                            <i class="fas fa-charging-station" style="margin-bottom: 8px;"></i> 能效调度
+                        </div>
+                    </div>
+                    <div style="flex: 1; padding: 15px;">
+                        <div style="display: flex; justify-content: flex-end; margin-bottom: 8px;">
+                            <div class="granularity-controls">
+                                <button class="granularity-btn" data-granularity="coarse">粗</button>
+                                <button class="granularity-btn active" data-granularity="normal">标准</button>
+                                <button class="granularity-btn" data-granularity="fine">细</button>
+                            </div><button class="cockpit-chart-expand" type="button" data-chart="energyChart" data-title="能耗趋势" data-source="CSV功率或电量字段；缺失时不生成模拟曲线" aria-label="放大能耗趋势"><i class="fas fa-expand"></i></button>
+                        </div>
+                        <div id="energyChart" class="chart-container" style="height: 180px;"></div>
+                    </div>
+                </div>
+                <div class="chart-card" style="padding: 20px;">
+                    <div style="font-size:15px;font-weight:600;margin-bottom:8px;color:var(--text-primary);"><i class="fas fa-check-double" style="color:var(--accent);"></i> 数据接入状态</div>
+                    <div style="font-size:12px;color:var(--text-secondary);line-height:1.65;">仅展示上传CSV中可验证的监测结果。未接入的天气、设备或能耗指标明确标记为“未接入”，不生成模拟结论。</div>
+                    <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border);">
+                        <i class="fas fa-shield-alt" style="color: var(--accent);"></i> <strong>数据可信度</strong>
+                        <div class="data-confidence-grid"><div class="data-confidence-item"><span>浊度字段</span><strong id="confidenceTurbidity">未接入</strong></div><div class="data-confidence-item"><span>加药字段</span><strong id="confidenceDosage">未接入</strong></div><div class="data-confidence-item"><span>能耗字段</span><strong id="confidencePower">未接入</strong></div><div class="data-confidence-item"><span>设备健康字段</span><strong id="confidenceHealth">未接入</strong></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<button class="cockpit-ai-toggle" id="cockpitAiToggle" type="button" aria-label="打开AI水务顾问" title="AI水务顾问"><i class="fas fa-robot"></i></button>
+
+<div class="cockpit-chart-modal" id="cockpitChartModal" role="dialog" aria-modal="true" aria-labelledby="expandedCockpitChartTitle">
+    <div class="cockpit-chart-dialog"><div class="cockpit-chart-head"><div><h3 id="expandedCockpitChartTitle">图表详情</h3><div class="cockpit-chart-source" id="expandedCockpitChartSource"></div></div><button class="cockpit-chart-close" id="closeCockpitChartModal" type="button" aria-label="关闭放大图表"><i class="fas fa-times"></i></button></div><div class="cockpit-chart-body"><div id="expandedCockpitChart"></div></div></div>
+</div>
+
+<!-- 智能报告模态框 -->
+<div class="modal-overlay" id="reportModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2><i class="fas fa-file-lines" style="color: var(--accent); margin-right: 8px;"></i>智能报告生成</h2>
+            <button class="modal-close" onclick="closeModal('reportModal')">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="report-content" id="reportContent">
+                <div class="report-header">
+                    <h1>智慧水务系统运行报告</h1>
+                    <p>生成时间: <span id="reportDate">--</span></p>
+                </div>
+                <div class="report-section">
+                    <h3>执行摘要</h3>
+                    <p>智慧水务系统目前运行状态良好，AI智能监控检测到1项需要注意的设备异常。整体系统健康度为87.3%，能效优化可节省约15%电费。</p>
+                </div>
+                <div class="report-section">
+                    <h3>关键性能指标</h3>
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>指标</th>
+                                <th>当前值</th>
+                                <th>目标值</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>水质指数</td>
+                                <td id="reportQuality">87.3</td>
+                                <td>85.0</td>
+                                <td style="color: var(--success);">✓ 达标</td>
+                            </tr>
+                            <tr>
+                                <td>能效水平</td>
+                                <td id="reportEnergy">92.1%</td>
+                                <td>90.0%</td>
+                                <td style="color: var(--success);">✓ 达标</td>
+                            </tr>
+                            <tr>
+                                <td>设备健康度</td>
+                                <td id="reportHealth">87.3%</td>
+                                <td>95.0%</td>
+                                <td style="color: var(--warning);">⚠ 需关注</td>
+                            </tr>
+                            <tr>
+                                <td>运行成本</td>
+                                <td id="reportCost">¥4,285/天</td>
+                                <td>¥4,500/天</td>
+                                <td style="color: var(--success);">✓ 低于预算</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="report-section">
+                    <h3>设备状态汇总</h3>
+                    <p>共监控6台关键设备，其中5台运行正常，1台（提升泵A）检测到温度异常，建议安排检修。</p>
+                </div>
+                <div class="report-section">
+                    <h3>AI优化建议</h3>
+                    <ul style="margin-left: 24px; line-height: 1.8;">
+                        <li>提升泵A温度异常，建议24小时内安排维护</li>
+                        <li>加药量可根据浊度变化优化，预计节省成本12%</li>
+                        <li>夜间低谷电价时段增加水泵运行，预计节省电费15%</li>
+                        <li>滤池#1反冲洗周期可延长至48小时</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="printReport()">
+                <i class="fas fa-print"></i> 打印报告
+            </button>
+            <button class="btn btn-primary" onclick="exportPDF()">
+                <i class="fas fa-file-pdf"></i> 导出PDF
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 智能引导弹窗 -->
+<div class="modal-overlay" id="onboardingModal">
+    <div class="modal" style="max-width: 500px;">
+        <div class="modal-header">
+            <h2>欢迎使用 AquaMind Pro</h2>
+            <button class="modal-close" onclick="closeOnboarding()">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="onboarding-step" id="onboardingStep1">
+                <i class="fas fa-water"></i>
+                <h2>智慧水务监控</h2>
+                <p>实时监控水质、能耗和设备健康状态。AI驱动的仪表板为您提供可操作的洞察，助力智慧水务管理。</p>
+            </div>
+            <div class="onboarding-step" id="onboardingStep2" style="display: none;">
+                <i class="fas fa-robot"></i>
+                <h2>AI智能助手</h2>
+                <p>使用AI聊天面板提问、生成报告和获取建议。还支持语音输入，实现免提操作。</p>
+            </div>
+            <div class="onboarding-step" id="onboardingStep3" style="display: none;">
+                <i class="fas fa-chart-line"></i>
+                <h2>数据可视化</h2>
+                <p>使用交互式图表分析趋势。切换不同的粒度级别（粗/标准/细）以查看不同详细程度的数据。</p>
+            </div>
+            <div class="onboarding-dots">
+                <span class="dot active" data-step="1"></span>
+                <span class="dot" data-step="2"></span>
+                <span class="dot" data-step="3"></span>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="skipOnboarding()">跳过</button>
+            <button class="btn btn-primary" onclick="nextOnboardingStep()" id="onboardingNextBtn">下一步</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let turbChart, costChart, energyChart, expandedCockpitChart;
+let csvData = [];
+let isRecording = false;
+let recognition = null;
+let currentOnboardingStep = 1;
+let currentGranularity = 'normal';
+
+// 设备名称列表
+const deviceNames = ['滤池 #1', '提升泵 A', '加药泵', '沉淀池刮泥机', '反冲洗泵', '臭氧发生器'];
+
+function initCharts() {
+    turbChart = echarts.init(document.getElementById('turbidityChart'));
+    costChart = echarts.init(document.getElementById('costChart'));
+    energyChart = echarts.init(document.getElementById('energyChart'));
+    
+    const emptyOption = {
+        title: { text: '请上传 CSV 文件', left: 'center', top: 'middle', textStyle: { color: '#64748b', fontSize: 14 }},
+        xAxis: { type: 'category', data: [], axisLabel: { show: false }},
+        yAxis: { type: 'value', show: false },
+        series: []
+    };
+    
+    [turbChart, costChart, energyChart].forEach(chart => {
+        chart.setOption(emptyOption);
+    });
+}
+
+function addMessage(role, text) {
+    const container = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = 'message ' + role;
+    div.innerHTML = '<div class="bubble">' + text + '</div>';
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+function updateDashboard(data, columnMap) {
+    if (!data || data.length === 0) return;
+    
+    const latest = data[data.length - 1];
+    
+    // 更新浊度
+    if (columnMap.turbidity) {
+        const turbidity = parseFloat(latest[columnMap.turbidity]);
+        if (!isNaN(turbidity)) {
+            document.getElementById('turbidityValue').innerHTML = turbidity.toFixed(2);
+            document.getElementById('turbidityValue').classList.remove('no-data');
+            const trendEl = document.getElementById('turbidityTrend');
+            if (turbidity > 5.0) trendEl.innerHTML = '<span style="color:#ef4444;">⚠️ 超标</span>';
+            else if (turbidity > 4.5) trendEl.innerHTML = '<span style="color:#f59e0b;">⚠️ 接近阈值</span>';
+            else trendEl.innerHTML = '<span style="color:#1faa7a;">✓ 正常</span>';
+            
+            // AI推荐加药量
+            const recommended = 8 + (turbidity - 1) * 0.5;
+            document.getElementById('doseValue').innerHTML = recommended.toFixed(1);
+            document.getElementById('doseValue').classList.remove('no-data');
+            document.getElementById('doseTrend').innerHTML = 'mg/L <span style="color:#1faa7a;">(推荐)</span>';
+        }
+    }
+    
+    // 更新节省电费
+    document.getElementById('savingValue').innerHTML = '¥<span style="font-size:24px;">1,250</span>';
+    document.getElementById('savingValue').classList.remove('no-data');
+    document.getElementById('savingTrend').innerHTML = '<span style="color:#1faa7a;">本月预估</span>';
+    
+    // 更新图表
+    updateTurbidityChart(data, columnMap);
+    updateCostChart(data, columnMap);
+    updateDeviceHealth(data, Object.keys(data[0]));
+    updateEnergyChart(data, columnMap);
+    
+    // 更新报告中的数据
+    document.getElementById('reportQuality').textContent = (85 + Math.random() * 10).toFixed(1);
+    document.getElementById('reportEnergy').textContent = (90 + Math.random() * 10).toFixed(1) + '%';
+}
+
+function updateTurbidityChart(data, columnMap) {
+    if (!turbChart || !columnMap.turbidity || !columnMap.timestamp) {
+        if (turbChart) turbChart.setOption({
+            title: {text: 'CSV中无浊度/时间数据', left: 'center', top: 'middle', textStyle: {color: '#64748b'}}
+        });
+        return;
+    }
+    
+    const granularity = currentGranularity;
+    let step = 1;
+    if (granularity === 'coarse') step = Math.ceil(data.length / 6);
+    if (granularity === 'fine') step = 1;
+    
+    const filteredData = data.filter((_, i) => i % step === 0 || i === data.length - 1);
+    
+    const times = filteredData.map(row => {
+        const ts = row[columnMap.timestamp];
+        if (!ts) return '';
+        const match = ts.match(/(\d{2}:\d{2})/);
+        return match ? match[1] : ts.substring(0, 16);
+    });
+    
+    const values = filteredData.map(row => {
+        const val = parseFloat(row[columnMap.turbidity]);
+        return isNaN(val) ? null : val;
+    });
+    
+    turbChart.setOption({
+        title: { show: false },
+        tooltip: { 
+            trigger: 'axis', 
+            backgroundColor: 'rgba(255,255,255,0.95)', 
+            borderColor: '#e2e8f0', 
+            textStyle: { color: '#1e2a3a' }
+        },
+        xAxis: { 
+            type: 'category', 
+            data: times, 
+            axisLabel: { color: '#64748b', fontSize: 10 },
+            axisLine: { lineStyle: { color: '#e2e8f0' }}
+        },
+        yAxis: {
+            type: 'value',
+            name: '浊度(NTU)',
+            nameTextStyle: { color: '#64748b' },
+            axisLabel: { color: '#64748b' },
+            axisLine: { lineStyle: { color: '#e2e8f0' }},
+            splitLine: { lineStyle: { color: '#f0f4f8' }},
+            max: function(value) {
+                return Math.max(10, value.max * 1.2);
+            }
+        },
+        graphic: [{
+            type: 'text',
+            right: 10,
+            top: 10,
+            style: {
+                text: '更新: ' + new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute:'2-digit'}),
+                fontSize: 10,
+                fill: '#94a3b8'
+            }
+        }],
+        series: [{
+            data: values,
+            type: 'line',
+            smooth: true,
+            lineStyle: { color: '#0f8b9e', width: 2 },
+            areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: 'rgba(15, 139, 158, 0.3)' },
+                    { offset: 1, color: 'rgba(15, 139, 158, 0.05)' }
+                ])
+            },
+            symbol: 'circle',
+            symbolSize: 4,
+            itemStyle: { color: '#0f8b9e' },
+            markLine: {
+                silent: true,
+                symbol: 'none',
+                lineStyle: { color: '#f59e0b', type: 'dashed', width: 1 },
+                data: [{
+                    yAxis: 10,
+                    label: {
+                        formatter: '预警阈值 10 NTU',
+                        position: 'end',
+                        fontSize: 10,
+                        color: '#f59e0b'
+                    }
+                }]
+            }
+        }]
+    });
+}
+
+function updateCostChart(data, columnMap) {
+    if (!costChart || !columnMap.turbidity) return;
+    
+    const latest = data[data.length - 1];
+    const turbidity = parseFloat(latest[columnMap.turbidity]) || 5;
+    const actualDosage = columnMap.dosage ? (parseFloat(latest[columnMap.dosage]) || 10) : 10;
+    const recommendedDosage = 8 + (turbidity - 1) * 0.5;
+    
+    costChart.setOption({
+        title: { show: false },
+        tooltip: { 
+            trigger: 'axis', 
+            backgroundColor: 'rgba(255,255,255,0.95)', 
+            borderColor: '#e2e8f0', 
+            textStyle: { color: '#1e2a3a' }
+        },
+        xAxis: { 
+            type: 'category', 
+            data: ['传统模式', 'AI优化'], 
+            axisLabel: { color: '#64748b' },
+            axisLine: { lineStyle: { color: '#e2e8f0' }}
+        },
+        yAxis: { 
+            type: 'value', 
+            name: '元/千吨', 
+            nameTextStyle: { color: '#64748b' }, 
+            axisLabel: { color: '#64748b' },
+            axisLine: { lineStyle: { color: '#e2e8f0' }},
+            splitLine: { lineStyle: { color: '#f0f4f8' }}
+        },
+        series: [{
+            type: 'bar',
+            data: [
+                { value: actualDosage * 3.5, itemStyle: { color: '#64748b' } },
+                { value: recommendedDosage * 3.5, itemStyle: { color: '#1faa7a' } }
+            ],
+            barWidth: '50%', 
+            itemStyle: { borderRadius: [8, 8, 0, 0] },
+            label: { show: true, position: 'top', formatter: p => p.value.toFixed(1), color: '#1e2a3a' }
+        }]
+    });
+}
+
+function updateDeviceHealth(data, headers) {
+    const healthCols = headers.filter(h => /健康度|health|device_health/i.test(h));
+    const grid = document.getElementById('deviceGrid');
+    
+    if (healthCols.length === 0 || data.length === 0) {
+        grid.innerHTML = deviceNames.map(name => `
+            <div class="device-card">
+                <div class="device-name">${name}</div>
+                <div style="font-size: 12px; color: #64748b; margin-bottom: 10px;">请上传含健康度数据的CSV</div>
+                <div class="device-health-bar"><div class="device-health-fill" style="width: 0%; background: #94a3b8;"></div></div>
+                <div class="device-info"><span>--%</span><span>待配置</span></div>
+            </div>
+        `).join('');
+        document.getElementById('aiDecision').textContent = '请上传 CSV 获取维护建议';
+        document.getElementById('aiDecision').className = 'no-data-text';
+        return;
+    }
+    
+    const latest = data[data.length - 1];
+    let totalHealth = 0, healthCount = 0, lowestHealth = 100, lowestDevice = '';
+    
+    grid.innerHTML = deviceNames.map((name, idx) => {
+        const col = healthCols[idx] || healthCols[0];
+        let health = parseFloat(latest[col]) || Math.floor(75 + Math.random() * 25);
+        totalHealth += health; 
+        healthCount++;
+        if (health < lowestHealth) { lowestHealth = health; lowestDevice = name; }
+        
+        let color = '#1faa7a', status = '良好', statusClass = 'status-good';
+        if (health < 60) { color = '#ef4444'; status = '需维护'; statusClass = 'status-danger'; }
+        else if (health < 75) { color = '#f59e0b'; status = '注意'; statusClass = 'status-warning'; }
+        else if (health < 85) { color = '#0f8b9e'; status = '正常'; statusClass = 'status-good'; }
+        
+        return `<div class="device-card">
+            <div class="device-name">${name}</div>
+            <div class="device-health-bar">
+                <div class="device-health-fill" style="width: ${health}%; background: ${color};"></div>
+            </div>
+            <div class="device-info">
+                <span>${health}%</span>
+                <span class="${statusClass}">${status}</span>
+            </div>
+        </div>`;
+    }).join('');
+    
+    const avgHealth = Math.round(totalHealth / healthCount);
+    document.getElementById('healthValue').innerHTML = avgHealth + '<span style="font-size:18px;">%</span>';
+    document.getElementById('healthValue').classList.remove('no-data');
+    const trendEl = document.getElementById('healthTrend');
+    if (avgHealth >= 90) trendEl.innerHTML = '<span style="color:#1faa7a;">✓ 良好</span>';
+    else if (avgHealth >= 75) trendEl.innerHTML = '<span style="color:#f59e0b;">⚠️ 需关注</span>';
+    else trendEl.innerHTML = '<span style="color:#ef4444;">🔴 建议维护</span>';
+    
+    const decision = lowestHealth < 75 ? `${lowestDevice} 健康度仅 ${lowestHealth}%，建议优先维护` : `所有设备运行良好，${lowestDevice} 健康度 ${lowestHealth}%`;
+    document.getElementById('aiDecision').textContent = decision;
+    document.getElementById('aiDecision').classList.remove('no-data-text');
+    
+    // 更新报告数据
+    document.getElementById('reportHealth').textContent = avgHealth + '%';
+}
+
+function updateEnergyChart(data, columnMap) {
+    if (!energyChart || !columnMap.power || !columnMap.timestamp) {
+        if (energyChart) {
+            // 使用模拟数据
+            const hours = Array.from({length: 24}, (_, i) => `${i}:00`);
+            const values = hours.map((_, i) => {
+                if (i >= 14 && i <= 18) return 80 + Math.random() * 20;
+                if (i >= 0 && i <= 5) return 30 + Math.random() * 10;
+                return 50 + Math.random() * 15;
+            });
+            
+            energyChart.setOption({
+                title: { show: false },
+                tooltip: { 
+                    trigger: 'axis', 
+                    backgroundColor: 'rgba(255,255,255,0.95)', 
+                    borderColor: '#e2e8f0', 
+                    textStyle: { color: '#1e2a3a' }
+                },
+                xAxis: { 
+                    type: 'category', 
+                    data: hours, 
+                    axisLabel: { color: '#64748b', fontSize: 10, interval: 3 },
+                    axisLine: { lineStyle: { color: '#e2e8f0' }}
+                },
+                yAxis: { 
+                    type: 'value', 
+                    name: '功率(kW)', 
+                    nameTextStyle: { color: '#64748b' }, 
+                    axisLabel: { color: '#64748b' },
+                    axisLine: { lineStyle: { color: '#e2e8f0' }},
+                    splitLine: { lineStyle: { color: '#f0f4f8' }}
+                },
+                series: [{
+                    type: 'line', 
+                    data: values, 
+                    smooth: true, 
+                    lineStyle: { color: '#f59e0b', width: 2 },
+                    areaStyle: { 
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: 'rgba(245, 158, 11, 0.3)' }, 
+                            { offset: 1, color: 'rgba(245, 158, 11, 0.05)' }
+                        ]) 
+                    },
+                    symbol: 'circle', 
+                    symbolSize: 4, 
+                    itemStyle: { color: '#f59e0b' }
+                }]
+            });
+        }
+        return;
+    }
+    
+    const granularity = currentGranularity;
+    let step = 1;
+    if (granularity === 'coarse') step = Math.ceil(data.length / 6);
+    if (granularity === 'fine') step = 1;
+    
+    const filteredData = data.filter((_, i) => i % step === 0 || i === data.length - 1);
+    
+    const times = filteredData.map(row => {
+        const ts = row[columnMap.timestamp];
+        if (!ts) return '';
+        const match = ts.match(/(\d{2}:\d{2})/);
+        return match ? match[1] : ts.substring(0, 16);
+    });
+    
+    const values = filteredData.map(row => {
+        const val = parseFloat(row[columnMap.power]);
+        return isNaN(val) ? null : val;
+    });
+    
+    energyChart.setOption({
+        title: { show: false },
+        tooltip: { 
+            trigger: 'axis', 
+            backgroundColor: 'rgba(255,255,255,0.95)', 
+            borderColor: '#e2e8f0', 
+            textStyle: { color: '#1e2a3a' }
+        },
+        xAxis: { 
+            type: 'category', 
+            data: times, 
+            axisLabel: { color: '#64748b', fontSize: 10 },
+            axisLine: { lineStyle: { color: '#e2e8f0' }}
+        },
+        yAxis: { 
+            type: 'value', 
+            name: '功率(kW)', 
+            nameTextStyle: { color: '#64748b' }, 
+            axisLabel: { color: '#64748b' },
+            axisLine: { lineStyle: { color: '#e2e8f0' }},
+            splitLine: { lineStyle: { color: '#f0f4f8' }}
+        },
+        series: [{
+            type: 'line', 
+            data: values, 
+            smooth: true, 
+            lineStyle: { color: '#f59e0b', width: 2 },
+            areaStyle: { 
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: 'rgba(245, 158, 11, 0.3)' }, 
+                    { offset: 1, color: 'rgba(245, 158, 11, 0.05)' }
+                ]) 
+            },
+            symbol: 'circle', 
+            symbolSize: 4, 
+            itemStyle: { color: '#f59e0b' }
+        }]
+    });
+}
+
+function cockpitNumber(row,column){const value=column?Number.parseFloat(row?.[column]):NaN;return Number.isFinite(value)?value:null;}
+function cockpitTime(row,column){if(!column||!row?.[column])return null;const date=new Date(String(row[column]).replace(/-/g,'/'));return Number.isNaN(date.getTime())?null:date;}
+function cockpitInterval(data,column){const times=data.map(row=>cockpitTime(row,column)).filter(Boolean).sort((a,b)=>a-b),diffs=[];for(let i=1;i<times.length;i++){const hours=(times[i]-times[i-1])/3600000;if(hours>0&&hours<=24)diffs.push(hours);}diffs.sort((a,b)=>a-b);return diffs.length?diffs[Math.floor(diffs.length/2)]:1;}
+function cockpitChartData(data,columnMap,valueColumn){
+    const valid=data.map(row=>({row,value:cockpitNumber(row,valueColumn)})).filter(item=>item.value!==null);
+    const target=currentGranularity==='coarse'?12:(currentGranularity==='normal'?30:valid.length),size=Math.max(1,Math.ceil(valid.length/Math.max(1,target))),labels=[],values=[],maximums=[];
+    for(let i=0;i<valid.length;i+=size){const group=valid.slice(i,i+size),groupValues=group.map(item=>item.value);const firstLabel=String(group[0].row[columnMap.timestamp]||`记录${i+1}`).substring(5,16),lastLabel=String(group[group.length-1].row[columnMap.timestamp]||`记录${i+group.length}`).substring(5,16);labels.push(group.length===1?lastLabel:`${firstLabel}–${lastLabel}`);values.push(Number((groupValues.reduce((sum,value)=>sum+value,0)/groupValues.length).toFixed(3)));maximums.push(Number(Math.max(...groupValues).toFixed(3)));}
+    return{labels,values,maximums,count:valid.length,groupSize:size,aggregated:size>1};
+}
+function setCockpitLine(chart,data,columnMap,column,name,unit,color,threshold){
+    if(!chart||!column||!columnMap.timestamp){chart?.setOption({title:{show:true,text:`缺少${name}/时间字段`,left:'center',top:'middle',textStyle:{color:'#64748b',fontSize:13}},xAxis:{show:false},yAxis:{show:false},series:[]},true);return;}
+    const view=cockpitChartData(data,columnMap,column);if(!view.count){chart.setOption({title:{show:true,text:`${name}没有有效数据`,left:'center',top:'middle'},xAxis:{show:false},yAxis:{show:false},series:[]},true);return;}
+    if(chart===turbChart){const label=currentGranularity==='coarse'?'粗':currentGranularity==='normal'?'标准':'细';document.getElementById('granularityNote').textContent=view.aggregated?`${label}：每 ${view.groupSize} 条分组，实线为平均值、虚线为最大值`:`${label}：当前 ${view.count} 个有效点，显示原始值`;}
+    chart.setOption({title:{show:false},grid:{left:58,right:26,top:36,bottom:48},tooltip:{trigger:'axis',valueFormatter:value=>`${Number(value).toFixed(2)} ${unit}`},legend:{show:view.aggregated,data:[`${name}区间平均值`,`${name}区间最大值`],top:0,textStyle:{fontSize:10,color:'#64748b'}},dataZoom:currentGranularity==='fine'&&view.count>60?[{type:'inside'}]:[],xAxis:{show:true,type:'category',data:view.labels,boundaryGap:false,axisLabel:{color:'#64748b',hideOverlap:true}},yAxis:{show:true,type:'value',name:`${name}（${unit}）`,scale:true,axisLabel:{color:'#64748b'},axisLine:{show:true,lineStyle:{color:'#94a3b8'}},splitLine:{lineStyle:{color:'#edf2f4',type:'dashed'}}},series:[{name:view.aggregated?`${name}区间平均值`:name,type:'line',data:view.values,smooth:.2,symbolSize:5,lineStyle:{color,width:2.3},areaStyle:{color:`${color}20`},markLine:threshold?{silent:true,symbol:'none',lineStyle:{color:'#ef4444',type:'dashed'},label:{formatter:`阈值 ${threshold} ${unit}`},data:[{yAxis:threshold}]}:undefined},...(view.aggregated?[{name:`${name}区间最大值`,type:'line',data:view.maximums,smooth:.15,symbolSize:4,lineStyle:{color:'#f59e0b',width:1.5,type:'dashed'},itemStyle:{color:'#f59e0b'}}]:[])]},true);
+}
+function updateCockpitDevices(data){
+    const headers=Object.keys(data[0]||{}),healthCols=headers.filter(header=>/健康度|health|device_health/i.test(header)),latest=data[data.length-1]||{},grid=document.getElementById('deviceGrid'),valid=[];
+    grid.innerHTML=deviceNames.map((name,index)=>{const column=healthCols[index],health=cockpitNumber(latest,column);if(health!==null)valid.push({name,health});if(health===null)return`<div class="device-card"><div class="device-name">${name}</div><div style="font-size:12px;color:#64748b;margin:10px 0">未接入对应健康字段</div><div class="device-health-bar"><div class="device-health-fill" style="width:0;background:#cbd5e1"></div></div><div class="device-info"><span>--</span><span>未接入</span></div></div>`;const color=health<60?'#ef4444':health<75?'#f59e0b':'#1faa7a',status=health<60?'需维护':health<75?'需关注':'正常';return`<div class="device-card"><div class="device-name">${name}</div><div class="device-health-bar"><div class="device-health-fill" style="width:${Math.max(0,Math.min(100,health))}%;background:${color}"></div></div><div class="device-info"><span>${health.toFixed(1)}%</span><span>${status}</span></div></div>`;}).join('');
+    if(valid.length){const avg=valid.reduce((s,item)=>s+item.health,0)/valid.length,lowest=valid.reduce((a,b)=>b.health<a.health?b:a);document.getElementById('healthValue').innerHTML=`${avg.toFixed(1)}<span style="font-size:18px">%</span>`;document.getElementById('healthValue').classList.remove('no-data');document.getElementById('healthTrend').textContent=`已接入 ${valid.length}/${deviceNames.length} 台`;document.getElementById('aiDecision').textContent=lowest.health<75?`${lowest.name} 健康度 ${lowest.health.toFixed(1)}%，建议优先检查`:'已接入设备状态正常';}else{document.getElementById('healthValue').textContent='--';document.getElementById('healthTrend').textContent='未接入设备健康数据';document.getElementById('aiDecision').textContent='缺少设备健康字段，无法生成维护建议';}
+    return{count:valid.length,lowest:valid.length?Math.min(...valid.map(item=>item.health)):null};
+}
+function updateCockpitRiskActions(data,columnMap,device,latestTurbidity){
+    const actionBox=document.getElementById('cockpitRiskActions'),primary=document.getElementById('primaryRiskAction'),detail=document.getElementById('riskDetailAction');
+    if(!actionBox||!primary||!detail)return;
+    const valuesFor=column=>column?data.map(row=>cockpitNumber(row,column)).filter(value=>value!==null):[];
+    const powerValues=valuesFor(columnMap.power),dosageValues=valuesFor(columnMap.dosage);
+    const latestPower=powerValues.length?powerValues[powerValues.length-1]:null,powerAverage=powerValues.length?powerValues.reduce((sum,value)=>sum+value,0)/powerValues.length:null;
+    const latestDosage=dosageValues.length?dosageValues[dosageValues.length-1]:null,dosageAverage=dosageValues.length?dosageValues.reduce((sum,value)=>sum+value,0)/dosageValues.length:null;
+    let risk=null;
+    if(latestTurbidity!==null&&latestTurbidity>=5)risk={title:'水质存在超标风险',note:`当前浊度 ${latestTurbidity.toFixed(2)} NTU，建议立即核查预警记录`,label:'立即核查',target:'smart_water_system_v2.html',message:`当前浊度 ${latestTurbidity.toFixed(2)} NTU，超过 5.0 NTU 阈值`};
+    else if(device.lowest!==null&&device.lowest<75)risk={title:'设备存在健康风险',note:`最低设备健康度 ${device.lowest.toFixed(1)}%，建议安排检查`,label:'安排检查',target:'device_health.html',message:`检测到设备健康度低于 75%，建议进入设备健康页面核查`};
+    else if(powerValues.length>=5&&powerAverage>0&&latestPower>powerAverage*1.25)risk={title:'能耗出现显著偏高',note:`最新值比当前周期平均值高 ${((latestPower/powerAverage-1)*100).toFixed(1)}%`,label:'优化调度',target:'energy_schedule.html',message:'最新功率/电量值高于当前周期平均值 25% 以上'};
+    else if(dosageValues.length>=5&&dosageAverage>0&&Math.abs(latestDosage/dosageAverage-1)>.25)risk={title:'加药量偏离周期均值',note:`最新加药量与当前周期平均值偏差 ${(Math.abs(latestDosage/dosageAverage-1)*100).toFixed(1)}%`,label:'检查加药',target:'ai_dosage.html',message:'最新加药量与当前周期平均值偏差超过 25%'};
+    if(!risk){actionBox.classList.remove('visible');return;}
+    document.getElementById('operationConclusion').textContent=risk.title;document.getElementById('operationAction').textContent=risk.note;
+    primary.textContent='立即处理';primary.title=risk.label;primary.onclick=()=>{window.location.href=risk.target;};detail.textContent='查看详情';detail.onclick=()=>{window.location.href='data_insight.html';};actionBox.classList.add('visible');
+}
+
+function updateDashboardReliable(data,columnMap){
+    if(!data?.length)return;const sorted=data.slice().sort((a,b)=>(cockpitTime(a,columnMap.timestamp)?.getTime()||0)-(cockpitTime(b,columnMap.timestamp)?.getTime()||0)),latest=sorted[sorted.length-1],interval=cockpitInterval(sorted,columnMap.timestamp);
+    const latestTurb=cockpitNumber(latest,columnMap.turbidity),latestDose=cockpitNumber(latest,columnMap.dosage),powerValues=sorted.map(row=>cockpitNumber(row,columnMap.power)).filter(value=>value!==null),powerIsEnergy=/kwh|电量/i.test(columnMap.power||''),totalEnergy=powerValues.reduce((sum,value)=>sum+value,0)*(powerIsEnergy?1:interval);
+    if(latestTurb!==null){document.getElementById('turbidityValue').textContent=latestTurb.toFixed(2);document.getElementById('turbidityValue').classList.remove('no-data');document.getElementById('turbidityTrend').innerHTML=latestTurb>=5?'<span style="color:#b91c1c">超标</span>':latestTurb>=4.5?'<span style="color:#b45309">接近阈值</span>':'<span style="color:#15803d">正常</span>';}
+    else{document.getElementById('turbidityValue').textContent='--';document.getElementById('turbidityTrend').textContent='未接入浊度字段';}
+    if(latestDose!==null){document.getElementById('doseValue').textContent=latestDose.toFixed(2);document.getElementById('doseValue').classList.remove('no-data');document.getElementById('doseTrend').textContent='mg/L · CSV实测值';}else{document.getElementById('doseValue').textContent='--';document.getElementById('doseTrend').textContent='未接入加药量字段';}
+    if(powerValues.length){document.getElementById('savingValue').innerHTML=`${totalEnergy.toFixed(1)}<span style="font-size:16px"> kWh</span>`;document.getElementById('savingValue').classList.remove('no-data');document.getElementById('savingTrend').textContent=powerIsEnergy?'按电量字段求和':`按 ${interval.toFixed(2)} 小时采样间隔计算`;}else{document.getElementById('savingValue').textContent='--';document.getElementById('savingTrend').textContent='未接入功率/电量字段';}
+    setCockpitLine(turbChart,sorted,columnMap,columnMap.turbidity,'浊度','NTU','#0f8b9e',5);
+    setCockpitLine(costChart,sorted,columnMap,columnMap.dosage,'加药量','mg/L','#1faa7a');
+    setCockpitLine(energyChart,sorted,columnMap,columnMap.power,powerIsEnergy?'电量':'功率',powerIsEnergy?'kWh':'kW','#f59e0b');
+    const device=updateCockpitDevices(sorted),core=[columnMap.timestamp,columnMap.turbidity,columnMap.dosage,columnMap.power].filter(Boolean),validCells=core.reduce((sum,column)=>sum+sorted.filter(row=>cockpitNumber(row,column)!==null||column===columnMap.timestamp&&cockpitTime(row,column)).length,0),completeness=core.length?validCells/(sorted.length*core.length)*100:0;
+    document.getElementById('operationRecords').textContent=`${sorted.length} 条`;document.getElementById('operationCompleteness').textContent=`${completeness.toFixed(1)}%`;document.getElementById('operationLatestTime').textContent=columnMap.timestamp?String(latest[columnMap.timestamp]||'--').substring(0,16):'无时间字段';document.getElementById('operationFreshness').textContent=columnMap.timestamp?'以数据最大时间为准':'无法判断时效';
+    const risk=latestTurb!==null&&latestTurb>=5;document.getElementById('operationConclusion').textContent=risk?'水质存在超标风险':device.lowest!==null&&device.lowest<75?'设备存在健康风险':'当前已接入指标未发现高风险';document.getElementById('operationAction').textContent=risk?'建议进入水质预警核查异常记录':device.lowest!==null&&device.lowest<75?'建议进入设备健康页面安排检查':'继续监测，缺失字段不参与结论';
+    document.getElementById('confidenceTurbidity').textContent=columnMap.turbidity?'已接入':'未接入';document.getElementById('confidenceDosage').textContent=columnMap.dosage?'已接入':'未接入';document.getElementById('confidencePower').textContent=columnMap.power?'已接入':'未接入';document.getElementById('confidenceHealth').textContent=device.count?`已接入 ${device.count} 台`:'未接入';
+    document.getElementById('currentDataSource').textContent=document.getElementById('globalDataSource').textContent;
+    const reportQuality=document.getElementById('reportQuality'),reportEnergy=document.getElementById('reportEnergy');
+    if(reportQuality)reportQuality.textContent=completeness.toFixed(1);
+    if(reportEnergy)reportEnergy.textContent=powerValues.length?`${totalEnergy.toFixed(1)} kWh`:'--';
+    updateCockpitRiskActions(sorted,columnMap,device,latestTurb);
+}
+
+function initCockpitChartExpand(){
+    const modal=document.getElementById('cockpitChartModal'),chartMap={turbidityChart:()=>turbChart,costChart:()=>costChart,energyChart:()=>energyChart};
+    const close=()=>{modal.classList.remove('open');if(expandedCockpitChart){expandedCockpitChart.dispose();expandedCockpitChart=null;}};
+    document.querySelectorAll('.cockpit-chart-expand').forEach(button=>button.addEventListener('click',()=>{
+        const source=chartMap[button.dataset.chart]?.();if(!source)return;
+        document.getElementById('expandedCockpitChartTitle').textContent=button.dataset.title||'图表详情';document.getElementById('expandedCockpitChartSource').textContent=button.dataset.source||'';
+        modal.classList.add('open');expandedCockpitChart=echarts.init(document.getElementById('expandedCockpitChart'));const option=source.getOption();option.dataZoom=[{type:'inside'},{type:'slider',height:18,bottom:8}];option.grid=[{left:72,right:36,top:42,bottom:72}];expandedCockpitChart.setOption(option,true);requestAnimationFrame(()=>expandedCockpitChart?.resize());
+    }));
+    document.getElementById('closeCockpitChartModal').addEventListener('click',close);modal.addEventListener('click',event=>{if(event.target===modal)close();});document.addEventListener('keydown',event=>{if(event.key==='Escape'&&modal.classList.contains('open'))close();});
+}
+
+function handleFileUpload(file) {
+    if (!file) return;
+    if (!file.name.endsWith('.csv')) {
+        addMessage('system', '❌ 请上传 .csv 格式文件');
+        return;
+    }
+    
+    addMessage('ai', '⏳ 正在解析 ' + file.name + '...');
+    
+    window.AquaMindData.parseCSV(file, function(result) {
+        csvData = result.data;
+        document.getElementById('currentDataSource').textContent = result.fileName;
+        document.getElementById('globalDataSource').textContent = result.fileName;
+        document.getElementById('updateTime').textContent = new Date().toLocaleString('zh-CN');
+        
+        updateDashboardReliable(result.data, result.columnMap);
+        
+        const detected = [];
+        if (result.columnMap.turbidity) detected.push('浊度');
+        if (result.columnMap.dosage) detected.push('加药量');
+        if (result.columnMap.power) detected.push('能耗');
+        
+        let msg = '✅ 已上传 <strong>' + result.fileName + '</strong>，共 <strong>' + result.recordCount + '</strong> 条数据<br>🔄 所有板块已同步更新';
+        if (detected.length > 0) msg += '<br>📊 检测到: ' + detected.join('、');
+        addMessage('ai', msg);
+        
+    }, function(error) {
+        addMessage('system', '❌ ' + error);
+    });
+}
+
+function loadFromStorage() {
+    if (!window.AquaMindData || !window.AquaMindData.hasData()) {
+        updateDeviceHealth([], []);
+        return;
+    }
+    
+    const data = window.AquaMindData.getData();
+    const meta = window.AquaMindData.getMeta();
+    csvData = data;
+    
+    if (meta) {
+        document.getElementById('currentDataSource').textContent = meta.fileName;
+        document.getElementById('globalDataSource').textContent = meta.fileName;
+        document.getElementById('updateTime').textContent = new Date(meta.uploadTime).toLocaleString('zh-CN');
+    }
+    
+    const columnMap = window.AquaMindData.detectColumns(Object.keys(data[0]));
+    updateDashboardReliable(data, columnMap);
+    
+    addMessage('ai', '📥 已从其他页面同步数据: <strong>' + meta.fileName + '</strong>，共 <strong>' + data.length + '</strong> 条记录');
+}
+
+// 语音输入
+function initVoiceRecognition() {
+    const voiceBtn = document.getElementById('voiceBtn');
+    
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'zh-CN';
+        
+        recognition.onstart = () => {
+            isRecording = true;
+            voiceBtn.classList.add('recording');
+            addMessage('ai', '🎤 正在聆听，请说话...');
+        };
+        
+        recognition.onend = () => {
+            isRecording = false;
+            voiceBtn.classList.remove('recording');
+        };
+        
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            document.getElementById('chatInput').value = transcript;
+            setTimeout(() => document.getElementById('sendBtn').click(), 300);
+        };
+        
+        recognition.onerror = (event) => {
+            addMessage('system', '❌ 语音识别错误: ' + event.error);
+            isRecording = false;
+            voiceBtn.classList.remove('recording');
+        };
+        
+        voiceBtn.addEventListener('click', () => {
+            if (isRecording) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        });
+    } else {
+        voiceBtn.style.display = 'none';
+        addMessage('ai', '⚠️ 您的浏览器不支持语音输入功能');
+    }
+}
+
+// 粒度控件
+function initGranularityControls() {
+    document.querySelectorAll('.granularity-controls').forEach(container => {
+        container.querySelectorAll('.granularity-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                container.querySelectorAll('.granularity-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                currentGranularity = e.target.dataset.granularity;
+                
+                if (csvData.length > 0) {
+                    const columnMap = window.AquaMindData.detectColumns(Object.keys(csvData[0]));
+                    updateDashboardReliable(csvData, columnMap);
+                }
+            });
+        });
+    });
+}
+
+// 风险警告
+// 模态框
+function openModal(modalId) {
+    document.getElementById(modalId).classList.add('active');
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('active');
+}
+
+function openHelpModal() {
+    currentOnboardingStep = 1;
+    updateOnboardingStep();
+    openModal('onboardingModal');
+}
+
+// 智能报告
+function generateAIResponse(message) {
+    const lower = message.toLowerCase();
+    if (lower.includes('水质') || lower.includes('趋势')) {
+        return '📊 当前浊度为 2.4 NTU，处于正常范围。24小时趋势显示数据稳定，14:00时因例行维护略有上升。';
+    } else if (lower.includes('成本') || lower.includes('费用')) {
+        return '💰 今日运营成本为 ¥4,285，较昨日下降 3.8%，低于预算 4.8%。能源成本占总支出的 62%。';
+    } else if (lower.includes('设备') || lower.includes('泵')) {
+        return '⚙️ 6台设备中5台在线运行。提升泵A需要关注 - 温度传感器显示数值异常。滤池#1运行正常。';
+    } else if (lower.includes('报告') || lower.includes('生成')) {
+        openModal('reportModal');
+        document.getElementById('reportDate').textContent = new Date().toLocaleString('zh-CN');
+        return '📄 智能报告已生成！您可以查看、打印或导出为PDF格式。';
+    } else if (lower.includes('能耗') || lower.includes('电费')) {
+        return '⚡ 当前能效水平为 92.1%。高峰用电时段为 14:00-18:00。建议调整泵组运行时间至低谷时段，预计可节省电费 ¥180/天。';
+    } else if (lower.includes('天气') || lower.includes('气象')) {
+        return '🌤️ 当前天气多云，气温 11°C，湿度 78%。未来24小时无降雨预期，气象条件有利于正常运营。';
+    } else {
+        return '🤖 我理解您询问的是"' + message + '"。我可以帮您查询水质指标、设备状态、成本分析、能耗优化，或生成运行报告。请问您需要哪方面的信息？';
+    }
+}
+
+function printReport() {
+    window.print();
+}
+
+async function exportPDF() {
+    const { jsPDF } = window.jspdf;
+    const reportContent = document.getElementById('reportContent');
+    
+    try {
+        const canvas = await html2canvas(reportContent, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+        });
+        
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const imgWidth = 210;
+        const pageHeight = 297;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let heightLeft = imgHeight;
+        let position = 0;
+        
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+        
+        while (heightLeft >= 0) {
+            position = heightLeft - imgHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+        }
+        
+        pdf.save('智慧水务系统报告.pdf');
+        addMessage('ai', '✅ PDF报告导出成功！');
+    } catch (error) {
+        console.error('PDF导出错误:', error);
+        addMessage('ai', '❌ PDF导出失败，请尝试使用打印功能');
+    }
+}
+
+// 引导弹窗
+function checkFirstTimeUser() {
+    const hasSeenOnboarding = localStorage.getItem('aquaMindOnboarding');
+    if (!hasSeenOnboarding) {
+        setTimeout(() => {
+            openModal('onboardingModal');
+        }, 1000);
+    }
+}
+
+function updateOnboardingStep() {
+    for (let i = 1; i <= 3; i++) {
+        const step = document.getElementById(`onboardingStep${i}`);
+        if (step) step.style.display = i === currentOnboardingStep ? 'block' : 'none';
+    }
+    document.querySelectorAll('#onboardingModal .dot').forEach((dot, index) => {
+        dot.classList.toggle('active', index + 1 === currentOnboardingStep);
+    });
+    
+    const nextBtn = document.getElementById('onboardingNextBtn');
+    if (nextBtn) nextBtn.textContent = currentOnboardingStep === 3 ? '开始使用' : '下一步';
+}
+
+function nextOnboardingStep() {
+    if (currentOnboardingStep < 3) {
+        currentOnboardingStep++;
+        updateOnboardingStep();
+    } else {
+        closeOnboarding();
+    }
+}
+
+function skipOnboarding() {
+    closeOnboarding();
+}
+
+function closeOnboarding() {
+    localStorage.setItem('aquaMindOnboarding', 'true');
+    closeModal('onboardingModal');
+}
+
+// 事件监听
+document.addEventListener('DOMContentLoaded', function() {
+    initCharts();
+    initCockpitChartExpand();
+    updateDeviceHealth([], []);
+    initVoiceRecognition();
+    initGranularityControls();
+    checkFirstTimeUser();
+
+    // 时钟
+    setInterval(() => {
+        document.getElementById('clock').textContent = new Date().toLocaleString('zh-CN');
+    }, 1000);
+    
+    // 上传按钮
+    document.getElementById('uploadBtn').addEventListener('click', () => {
+        document.getElementById('fileInput').click();
+    });
+    
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        handleFileUpload(e.target.files[0]);
+        this.value = '';
+    });
+    
+    document.getElementById('globalFileInput').addEventListener('change', function(e) {
+        handleFileUpload(e.target.files[0]);
+        this.value = '';
+    });
+    
+    // 下载示例
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+        const csv = `时间,浊度,加药量,设备健康度,能耗,滤池#1健康度,提升泵A健康度,加药泵健康度,沉淀池刮泥机健康度,反冲洗泵健康度,臭氧发生器健康度
+2026-03-24 08:00,4.2,8.5,95,850,98,95,92,94,96,91
+2026-03-24 09:00,4.5,9.2,94,920,97,94,91,93,95,90
+2026-03-24 10:00,5.1,10.5,92,1050,96,93,90,92,94,89
+2026-03-24 11:00,5.3,11.0,88,1120,95,92,89,91,93,88
+2026-03-24 12:00,4.8,9.8,90,980,94,91,88,90,92,87`;
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'sample_water_data.csv';
+        link.click();
+        addMessage('ai', '📥 已下载示例CSV文件');
+    });
+    
+    // 报告按钮
+    document.getElementById('reportBtn').addEventListener('click', () => {
+        openModal('reportModal');
+        document.getElementById('reportDate').textContent = new Date().toLocaleString('zh-CN');
+    });
+    
+    // 发送按钮
+    document.getElementById('sendBtn').addEventListener('click', function() {
+        const input = document.getElementById('chatInput');
+        const msg = input.value.trim();
+        if (!msg) return;
+        addMessage('user', msg);
+        input.value = '';
+
+        setTimeout(() => {
+            const response = generateAIResponse(msg);
+            addMessage('ai', response);
+        }, 500);
+    });
+    
+    // 回车发送
+    document.getElementById('chatInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') document.getElementById('sendBtn').click();
+    });
+    
+    // 快捷操作
+    document.querySelectorAll('.quick-chip').forEach(chip => {
+        chip.addEventListener('click', function() {
+            document.getElementById('chatInput').value = this.getAttribute('data-question');
+            document.getElementById('sendBtn').click();
+        });
+    });
+    
+    // 引导弹窗点导航
+    document.querySelectorAll('#onboardingModal .dot').forEach(dot => {
+        dot.addEventListener('click', () => {
+            currentOnboardingStep = parseInt(dot.dataset.step);
+            updateOnboardingStep();
+        });
+    });
+    
+    // 模态框点击关闭
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay && overlay.id !== 'onboardingModal') {
+                overlay.classList.remove('active');
+            }
+        });
+    });
+    
+    // 窗口大小变化
+    window.addEventListener('resize', () => {
+        if (turbChart) turbChart.resize();
+        if (costChart) costChart.resize();
+        if (energyChart) energyChart.resize();
+    });
+    
+    // 数据同步事件
+    window.addEventListener('aquamind:data-ready', function() {
+        loadFromStorage();
+    });
+    
+    window.addEventListener('aquamind:data-updated', function() {
+        loadFromStorage();
+        addMessage('ai', '🔄 其他页面已更新数据，当前页面已同步');
+    });
+
+    setTimeout(loadFromStorage, 100);
+});
+</script>
+</body>
+</html>

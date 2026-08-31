@@ -1,0 +1,22 @@
+2026-08-11 03:14:16 - AquaMind - INFO - 启动 AquaMind Pro Backend v2.0.0
+2026-08-11 03:14:16 - AquaMind - INFO - 运行模式: 生产
+2026-08-11 03:14:16 - AquaMind - INFO - 监听地址: 0.0.0.0:5000
+2026-08-11 03:14:16 - AquaMind - INFO - APN模型加载成功
+2026-08-11 03:14:16 - AquaMind - INFO - LLM聊天服务未启用，将使用降级响应
+2026-08-11 03:14:16 - AquaMind - INFO - 降级服务已启用
+2026-08-11 03:14:16 - AquaMind - INFO - 服务启动完成，准备接受请求
+2026-08-11 03:28:45 - AquaMind - INFO - 启动 AquaMind Pro Backend v2.0.0
+2026-08-11 03:28:45 - AquaMind - INFO - 运行模式: 生产
+2026-08-11 03:28:45 - AquaMind - INFO - 监听地址: 0.0.0.0:5000
+2026-08-11 03:28:45 - AquaMind - INFO - APN模型加载成功
+2026-08-11 03:28:45 - AquaMind - INFO - LLM聊天服务已启用
+2026-08-11 03:28:45 - AquaMind - INFO - 降级服务已启用
+2026-08-11 03:28:45 - AquaMind - INFO - 服务启动完成，准备接受请求
+2026-08-11 03:28:45 - AquaMind - INFO - 正在关闭服务...
+2026-08-11 03:29:34 - AquaMind - INFO - 启动 AquaMind Pro Backend v2.0.0
+2026-08-11 03:29:34 - AquaMind - INFO - 运行模式: 生产
+2026-08-11 03:29:34 - AquaMind - INFO - 监听地址: 0.0.0.0:5001
+2026-08-11 03:29:34 - AquaMind - INFO - APN模型加载成功
+2026-08-11 03:29:34 - AquaMind - INFO - LLM聊天服务已启用
+2026-08-11 03:29:34 - AquaMind - INFO - 降级服务已启用
+2026-08-11 03:29:34 - AquaMind - INFO - 服务启动完成，准备接受请求

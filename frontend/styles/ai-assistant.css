@@ -1,0 +1,286 @@
+/* 旧页面各自实现的AI入口已由统一助手替代；不依赖DOM层级或初始化时序。 */
+#aiFloatBtn,
+#aiDialog {
+    display: none !important;
+}
+
+.data-status-container {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(120px, 1fr));
+    gap: 10px;
+    margin: 0 0 18px;
+    padding: 12px;
+    background: #ffffff;
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 8px;
+    box-shadow: var(--shadow-sm, 0 1px 3px rgba(15, 23, 42, 0.08));
+}
+
+.data-status-item {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 20px 1fr;
+    column-gap: 8px;
+    row-gap: 2px;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: var(--text-primary, #0f172a);
+}
+
+.data-status-item i {
+    grid-row: 1 / span 2;
+    color: var(--accent-primary, #0e7b9e);
+}
+
+.data-status-label {
+    font-size: 12px;
+    color: var(--text-secondary, #64748b);
+    white-space: nowrap;
+}
+
+.data-status-item strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.source-offline,
+.apn-offline,
+.llm-offline,
+.llm-unavailable {
+    background: #fff7ed;
+}
+
+.source-csv,
+.source-realtime,
+.source-simulation,
+.source-prediction,
+.apn-real,
+.llm-configured {
+    background: #ecfdf5;
+}
+
+.apn-fallback,
+.llm-fallback,
+.apn-checking,
+.llm-checking {
+    background: #eff6ff;
+}
+
+.aqua-ai-assistant {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 3000;
+    color: #0f172a;
+}
+
+.aqua-ai-toggle {
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0e7b9e, #1baa7a);
+    color: #ffffff;
+    font-size: 22px;
+    cursor: pointer;
+    box-shadow: 0 12px 30px rgba(14, 123, 158, 0.32);
+}
+
+.aqua-ai-toggle:hover {
+    transform: translateY(-1px);
+}
+
+.aqua-ai-panel {
+    position: absolute;
+    right: 0;
+    bottom: 72px;
+    width: min(390px, calc(100vw - 32px));
+    height: min(560px, calc(100vh - 110px));
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    background: #ffffff;
+    border: 1px solid #dbe5ef;
+    border-radius: 8px;
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.22);
+}
+
+.aqua-ai-assistant.is-open .aqua-ai-panel {
+    display: flex;
+}
+
+.aqua-ai-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+
+.aqua-ai-header strong {
+    display: block;
+    font-size: 16px;
+}
+
+.aqua-ai-header span {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.aqua-ai-close,
+.aqua-ai-send {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    cursor: pointer;
+}
+
+.aqua-ai-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: transparent;
+    color: #475569;
+}
+
+.aqua-ai-close:hover {
+    background: #e2e8f0;
+}
+
+.aqua-ai-quick {
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    overflow-x: auto;
+}
+
+.aqua-ai-quick button {
+    flex: 0 0 auto;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #0f172a;
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.aqua-ai-quick button:hover {
+    border-color: #0e7b9e;
+    color: #0e7b9e;
+}
+
+.aqua-ai-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+    background: #f8fafc;
+}
+
+.aqua-ai-message {
+    margin-bottom: 12px;
+}
+
+.aqua-ai-message span {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.aqua-ai-message div {
+    width: fit-content;
+    max-width: 88%;
+    padding: 9px 11px;
+    border-radius: 8px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    font-size: 13px;
+    line-height: 1.55;
+    word-break: break-word;
+}
+
+.aqua-ai-message.is-user {
+    text-align: right;
+}
+
+.aqua-ai-message.is-user div {
+    margin-left: auto;
+    background: #0e7b9e;
+    border-color: #0e7b9e;
+    color: #ffffff;
+    text-align: left;
+}
+
+.aqua-ai-form {
+    display: grid;
+    grid-template-columns: 1fr 42px;
+    gap: 8px;
+    padding: 12px;
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+}
+
+.aqua-ai-input {
+    resize: none;
+    min-height: 42px;
+    max-height: 96px;
+    padding: 9px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font: inherit;
+    font-size: 13px;
+    outline: none;
+}
+
+.aqua-ai-input:focus {
+    border-color: #0e7b9e;
+    box-shadow: 0 0 0 3px rgba(14, 123, 158, 0.12);
+}
+
+.aqua-ai-send {
+    width: 42px;
+    height: 42px;
+    border-radius: 6px;
+    background: #0e7b9e;
+    color: #ffffff;
+}
+
+.aqua-ai-send:disabled {
+    opacity: 0.65;
+    cursor: wait;
+}
+
+@media (max-width: 900px) {
+    .data-status-container {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 520px) {
+    .data-status-container {
+        grid-template-columns: 1fr;
+    }
+
+    .aqua-ai-assistant {
+        right: 16px;
+        bottom: 16px;
+    }
+
+    .aqua-ai-panel {
+        bottom: 68px;
+    }
+}

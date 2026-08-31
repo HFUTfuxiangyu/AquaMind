@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智慧水务 - 水质预警</title>
+    <link rel="stylesheet" href="assets/css/system-fonts.css">
+    <link rel="stylesheet" href="assets/css/font-awesome.min.css">
+    <!-- 公共样式文件 -->
+    <link rel="stylesheet" href="styles/theme.css">
+    <link rel="stylesheet" href="styles/layout.css">
+    <link rel="stylesheet" href="styles/ai-assistant.css">
+    <script src="assets/js/echarts.min.js"></script>
+    <script src="assets/js/papaparse.min.js"></script>
+    <script src="components/auth.js"></script>
+    <script src="shared-data.js"></script>
+    <script src="components/sidebar-nav.js"></script>
+    <script src="components/ai-assistant.js"></script>
+    <script src="components/data-status.js"></script>
+    <style>
+        .page-container { background: #f6fafb; }
+        .page-header { background: transparent; border: 0; box-shadow: none; padding: 0 0 18px; margin-bottom: 0; }
+        .page-header h1 { font-size: 24px; letter-spacing: 0; color: #0f172a; }
+        .water-card { background: #ffffff; border: 1px solid #e5eef3; border-radius: 8px; padding: 18px 20px; margin-bottom: 18px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05); }
+        .section-title { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 16px; font-weight: 700; color: #0f172a; }
+        .section-title i { color: #0e8f9c; }
+        .data-management { display: grid; grid-template-columns: minmax(260px, 1.1fr) repeat(3, minmax(130px, .65fr)); gap: 14px; align-items: stretch; }
+        .data-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .data-tip { margin-top: 10px; font-size: 12px; color: #64748b; }
+        .metric-tile { padding: 12px 14px; border-radius: 8px; background: #f8fbfc; border: 1px solid #e5eef3; }
+        .metric-label { font-size: 12px; color: #64748b; margin-bottom: 6px; }
+        .metric-value { font-size: 18px; font-weight: 750; color: #0f172a; word-break: break-word; }
+        .threshold-card { display: block; }
+        .threshold-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 14px; }
+        .threshold-label { font-size: 14px; color: var(--text-secondary); }
+        .threshold-options { display: grid; grid-template-columns: repeat(3, minmax(160px, 1fr)); gap: 12px; }
+        .threshold-option { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 12px 14px; border-radius: 8px; background: #f8fbfc; border: 1px solid #dbe7ed; transition: var(--transition-normal); font-weight: 650; }
+        .threshold-option.active { background: rgba(15, 139, 158, 0.1); border-color: #0f8b9e; color: #0f8b9e; }
+        .threshold-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .threshold-dot.strict { background: var(--status-danger); }
+        .threshold-dot.standard { background: var(--status-warning); }
+        .threshold-dot.loose { background: var(--status-success); }
+        .monitor-grid { display: grid; grid-template-columns: minmax(280px, .85fr) minmax(420px, 1.6fr); gap: 18px; margin-bottom: 18px; }
+        .status-card { min-height: 320px; display: flex; flex-direction: column; justify-content: space-between; background: linear-gradient(180deg, #ffffff 0%, #f7fcfb 100%); }
+        .status-main { display: flex; flex-direction: column; gap: 10px; }
+        .status-label { font-size: 13px; color: #64748b; }
+        .status-number { font-size: 56px; line-height: 1; font-weight: 800; color: #0f8b9e; letter-spacing: 0; }
+        .status-unit { font-size: 16px; color: #64748b; font-weight: 600; margin-left: 6px; }
+        .status-pill { width: fit-content; padding: 6px 12px; border-radius: 999px; background: #ecfdf5; color: #16a34a; font-size: 13px; font-weight: 750; }
+        .status-pill.warning { background: #fffbeb; color: #d97706; }
+        .status-pill.danger { background: #fef2f2; color: #dc2626; }
+        .status-meta { display: grid; gap: 8px; padding-top: 14px; border-top: 1px solid #e5eef3; font-size: 13px; color: #64748b; }
+        .chart-card { background: #ffffff; border-radius: 8px; padding: 20px; border: 1px solid #e5eef3; margin-bottom: 18px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05); }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .chart-header h3 { font-size: 18px; font-weight: 600; }
+        .chart-header span { font-size: 12px; color: var(--accent-primary); }
+        .chart-container { height: 286px; width: 100%; }
+        .granularity-control { display: flex; align-items: center; gap: 8px; }
+        .granularity-btn { border: 1px solid #cbd5e1; background: #ffffff; color: #64748b; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; transition: all .2s; }
+        .granularity-btn.active { border-color: #0f8b9e; background: #0f8b9e; color: #ffffff; font-weight: 700; }
+        .chart-tool-btn { border: 1px solid #cbd5e1; background: #ffffff; color: #64748b; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+        .chart-tool-btn:hover { color: #0f8b9e; border-color: #0f8b9e; background: rgba(15, 139, 158, 0.08); }
+        .chart-zoom-modal { position: fixed; inset: 0; z-index: 4200; display: none; background: rgba(15, 23, 42, 0.55); padding: 28px; }
+        .chart-zoom-modal.active { display: flex; align-items: center; justify-content: center; }
+        .chart-zoom-panel { width: min(1280px, 96vw); height: min(760px, 92vh); display: flex; flex-direction: column; background: #ffffff; border-radius: 8px; box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28); overflow: hidden; }
+        .chart-zoom-header { height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 18px 0 20px; border-bottom: 1px solid #e5eef3; }
+        .chart-zoom-title { font-size: 16px; font-weight: 750; color: #0f172a; }
+        .chart-zoom-actions { display: flex; align-items: center; gap: 8px; }
+        .chart-zoom-body { flex: 1; padding: 16px 18px 18px; min-height: 0; }
+        #turbidityChartZoom { width: 100%; height: 100%; }
+        .params-card { background: #ffffff; border-radius: 8px; padding: 20px; border: 1px solid #e5eef3; margin-bottom: 18px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05); }
+        .params-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+        .param-item { background: #f8fbfc; border-radius: 8px; padding: 14px; border: 1px solid #e5eef3; min-height: 92px; }
+        .param-name { font-size: 12px; color: #64748b; margin-bottom: 6px; }
+        .param-value { font-size: 20px; font-weight: 700; }
+        .param-value.no-data { font-size: 14px; color: #64748b; font-weight: 400; }
+        .param-status { display: inline-flex; margin-top: 8px; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: #ecfdf5; }
+        .status-normal { color: #6fcf97; }
+        .status-warning { color: #ffaa44; }
+        .status-danger { color: #ff6b6b; }
+        .status-none { color: #64748b; }
+        .event-card { background: #ffffff; border-radius: 8px; padding: 20px; border: 1px solid #e5eef3; margin-bottom: 18px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05); }
+        .event-list { margin-top: 16px; overflow-x: auto; }
+        .event-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .event-table th { text-align: left; padding: 10px 12px; color: #64748b; background: #f8fbfc; border-bottom: 1px solid #e5eef3; font-weight: 700; }
+        .event-table td { padding: 11px 12px; border-bottom: 1px solid #eef4f7; }
+        .event-row.warning { background: #fffbeb; }
+        .event-row.danger { background: #fef2f2; }
+        .event-level { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 999px; font-size: 12px; font-weight: 750; }
+        .event-level.warning { background: #fef3c7; color: #d97706; }
+        .event-level.danger { background: #fee2e2; color: #dc2626; }
+        .no-events { text-align: center; color: #64748b; padding: 40px 20px; font-size: 14px; }
+        .upload-btn, .action-btn { display: inline-flex; align-items: center; gap: 7px; background: #ffffff; border: 1px solid #0f8b9e; padding: 8px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; color: #0f8b9e; font-weight: 700; }
+        .upload-btn:hover, .action-btn:hover { background: rgba(15, 139, 158, 0.08); }
+        .primary-action { background: #0f8b9e; color: #ffffff; }
+        .primary-action:hover { background: #0c7484; }
+        .report-actions { display: flex; justify-content: flex-end; gap: 12px; margin: 4px 0 18px; }
+        .return-map-btn { position: fixed; right: 24px; bottom: 86px; z-index: 1002; width: 58px; height: 58px; border-radius: 50%; border: 0; background: linear-gradient(135deg, #0f8b9e, #1faa7a); color: #ffffff; cursor: pointer; box-shadow: 0 10px 28px rgba(15, 139, 158, 0.3); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .return-map-btn .return-tip { position: absolute; right: 66px; white-space: nowrap; background: #0f172a; color: #ffffff; font-size: 12px; padding: 6px 10px; border-radius: 6px; opacity: 0; transform: translateX(4px); pointer-events: none; transition: all .2s; }
+        .return-map-btn:hover .return-tip { opacity: 1; transform: translateX(0); }
+        @media (max-width: 1180px) {
+            .data-management, .monitor-grid { grid-template-columns: 1fr; }
+            .params-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 680px) {
+            .threshold-options, .params-grid { grid-template-columns: 1fr; }
+            .report-actions { justify-content: stretch; flex-direction: column; }
+            .action-btn { justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+<!-- 侧边栏和顶部栏由 sidebar-nav.js 自动生成 -->
+<div class="page-container">
+    <div class="page-header">
+        <h1><i class="fas fa-water" style="margin-right: 12px; color: #0f8b9e;"></i>水质预警</h1>
+    </div>
+
+    <div class="water-card">
+        <div class="section-title"><i class="fas fa-database"></i> CSV 数据管理</div>
+        <div class="data-management">
+            <div>
+                <div class="data-actions">
+                    <div class="upload-btn primary-action" id="uploadBtn"><i class="fas fa-upload"></i> 上传 CSV 文件</div>
+                    <div class="upload-btn" id="downloadSampleBtn"><i class="fas fa-download"></i> 下载示例 CSV</div>
+                    <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
+                </div>
+                <div class="data-tip"><i class="fas fa-link"></i> 正在监听全局共享数据，其他页面上传或更新后本页自动同步。</div>
+            </div>
+            <div class="metric-tile">
+                <div class="metric-label">当前数据集</div>
+                <div class="metric-value" id="dataSourceName">未上传</div>
+            </div>
+            <div class="metric-tile">
+                <div class="metric-label">总条数</div>
+                <div class="metric-value" id="dataTotalCount">0 条</div>
+            </div>
+            <div class="metric-tile">
+                <div class="metric-label">数据时间范围</div>
+                <div class="metric-value" id="dataTimeRange">--</div>
+                <div style="font-size: 12px; color: #64748b; margin-top: 6px;" id="lastUpdateTime"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="water-card threshold-card">
+        <div class="threshold-head">
+            <div class="section-title" style="margin-bottom: 0;"><i class="fas fa-sliders-h"></i> 浊度报警阈值</div>
+            <div class="threshold-label" id="currentStatus"><i class="fas fa-tint"></i> <span id="currentTurbidityText">请上传 CSV 文件</span></div>
+        </div>
+        <div class="threshold-options">
+            <div class="threshold-option" data-threshold="4.0">
+                <div class="threshold-dot strict"></div>
+                <span>严格 4.0 NTU</span>
+            </div>
+            <div class="threshold-option active" data-threshold="5.0">
+                <div class="threshold-dot standard"></div>
+                <span>标准 5.0 NTU</span>
+            </div>
+            <div class="threshold-option" data-threshold="8.0">
+                <div class="threshold-dot loose"></div>
+                <span>宽松 8.0 NTU</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="monitor-grid">
+        <div class="water-card status-card">
+            <div class="section-title"><i class="fas fa-gauge-high"></i> 实时浊度状态</div>
+            <div class="status-main">
+                <div class="status-label">当前浊度</div>
+                <div><span class="status-number" id="currentTurbidityValue">--</span><span class="status-unit">NTU</span></div>
+                <div class="status-pill" id="currentStatusPill">等待数据</div>
+            </div>
+            <div class="status-meta">
+                <div><i class="far fa-clock"></i> 数据更新时间：<span id="statusUpdateTime">--</span></div>
+                <div><i class="fas fa-circle-info"></i> 当前阈值：<span id="activeThresholdText">5.0 NTU</span></div>
+            </div>
+        </div>
+
+        <div class="chart-card">
+            <div class="chart-header">
+                <div>
+                    <h3><i class="fas fa-chart-line"></i> 浊度时序趋势</h3>
+                    <span id="chartSubtitle">请上传 CSV 文件</span>
+                </div>
+                <div class="granularity-control">
+                    <span style="font-size: 12px; color: #64748b;">粒度</span>
+                    <button class="granularity-btn" data-granularity="coarse" title="降采样，适合大数据量，渲染更快">粗略</button>
+                    <button class="granularity-btn active" data-granularity="normal" title="平衡性能与细节">标准</button>
+                    <button class="granularity-btn" data-granularity="fine" title="全部原始数据，点数多时渲染较慢">精细</button>
+                    <button class="chart-tool-btn" id="zoomChartBtn" title="放大查看浊度趋势图"><i class="fas fa-expand"></i></button>
+                    <button class="chart-tool-btn" id="downloadChartBtn" title="下载浊度趋势图"><i class="fas fa-download"></i></button>
+                </div>
+            </div>
+            <div id="turbidityChart" class="chart-container"></div>
+        </div>
+    </div>
+
+    <div class="params-card">
+        <div class="chart-header">
+            <h3><i class="fas fa-flask"></i> 多参数水质监控</h3>
+            <span id="paramsTime">--</span>
+        </div>
+        <div class="params-grid" id="paramsGrid">
+            <!-- 动态生成 -->
+        </div>
+    </div>
+
+    <div class="event-card">
+        <div class="chart-header">
+            <h3><i class="fas fa-bell"></i> 预警事件记录</h3>
+            <span>最多展示 10 条</span>
+        </div>
+        <div class="event-list" id="eventList">
+            <div class="no-events">
+                <i class="fas fa-inbox" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                请上传 CSV 文件
+            </div>
+        </div>
+    </div>
+
+    <div class="report-actions">
+        <button class="action-btn" id="exportReportBtn"><i class="fas fa-download"></i> 导出预警报告</button>
+        <button class="action-btn primary-action" id="smartReportBtn"><i class="fas fa-file-alt"></i> 生成智能水质分析报告</button>
+    </div>
+</div>
+
+<div class="chart-zoom-modal" id="chartZoomModal" aria-hidden="true">
+    <div class="chart-zoom-panel">
+        <div class="chart-zoom-header">
+            <div class="chart-zoom-title"><i class="fas fa-chart-line" style="color:#0f8b9e;margin-right:8px;"></i>浊度时序趋势放大查看</div>
+            <div class="chart-zoom-actions">
+                <button class="chart-tool-btn" id="downloadZoomChartBtn" title="下载放大图"><i class="fas fa-download"></i></button>
+                <button class="chart-tool-btn" id="closeChartZoomBtn" title="关闭"><i class="fas fa-times"></i></button>
+            </div>
+        </div>
+        <div class="chart-zoom-body">
+            <div id="turbidityChartZoom"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+let csvData = [];
+let columnMap = {};
+let currentThreshold = 5.0;
+let turbidityChart = null;
+let turbidityChartZoom = null;
+let currentGranularity = 'normal';
+
+const paramRanges = {
+    ph: { min: 6.5, max: 8.5, unit: '', name: 'pH值' },
+    chlorine: { min: 0.3, max: 0.5, unit: 'mg/L', name: '余氯' },
+    cod: { min: 0, max: 10, unit: 'mg/L', name: 'COD' },
+    ammonia: { min: 0, max: 0.5, unit: 'mg/L', name: '氨氮' },
+    do: { min: 6, max: 8, unit: 'mg/L', name: '溶解氧' },
+    conductivity: { min: 200, max: 400, unit: 'μS/cm', name: '电导率' }
+};
+
+function initChart() {
+    turbidityChart = echarts.init(document.getElementById('turbidityChart'));
+    turbidityChart.setOption({
+        title: { text: '请上传 CSV 文件', left: 'center', top: 'middle', textStyle: { color: '#64748b', fontSize: 16 }},
+        xAxis: { type: 'category', data: [], axisLabel: { show: false }},
+        yAxis: { type: 'value', show: false },
+        series: []
+    });
+}
+
+function syncZoomChart() {
+    if (!turbidityChartZoom || !turbidityChart) return;
+    const option = turbidityChart.getOption();
+    turbidityChartZoom.setOption(option, true);
+    setTimeout(() => turbidityChartZoom.resize(), 0);
+}
+
+function openChartZoom() {
+    const modal = document.getElementById('chartZoomModal');
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+    if (!turbidityChartZoom) {
+        turbidityChartZoom = echarts.init(document.getElementById('turbidityChartZoom'));
+    }
+    syncZoomChart();
+}
+
+function closeChartZoom() {
+    const modal = document.getElementById('chartZoomModal');
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function updateTurbidityChart() {
+    if (!turbidityChart || !columnMap.turbidity || !columnMap.timestamp) {
+        if (turbidityChart) turbidityChart.setOption({
+            title: { text: '暂无浊度时序数据，请上传CSV数据', left: 'center', top: 'middle', textStyle: { color: '#64748b', fontSize: 14 }},
+            xAxis: { data: [] },
+            yAxis: { min: 0 },
+            series: [],
+            graphic: []
+        });
+        return;
+    }
+    
+    // 粒度控制
+    let plotData = [...csvData];
+    if (currentGranularity === 'coarse') {
+        plotData = csvData.filter((_, i) => i % 3 === 0);
+    } else if (currentGranularity === 'normal' && csvData.length > 120) {
+        plotData = csvData.filter((_, i) => i % 2 === 0);
+    }
+    
+    const fullTimes = plotData.map(row => row[columnMap.timestamp] || '');
+    const times = plotData.map(row => {
+        const ts = row[columnMap.timestamp];
+        if (!ts) return '';
+        const match = ts.match(/(\d{2}:\d{2})/);
+        return match ? match[1] : ts.substring(0, 16);
+    });
+    
+    const values = plotData.map(row => {
+        const val = parseFloat(row[columnMap.turbidity]);
+        return isNaN(val) ? null : val;
+    });
+    
+    const validValues = values.filter(v => v !== null);
+    if (validValues.length === 0) {
+        turbidityChart.setOption({
+            title: { text: '暂无浊度时序数据，请上传CSV数据', left: 'center', top: 'middle', textStyle: { color: '#64748b', fontSize: 14 }},
+            xAxis: { data: [] },
+            yAxis: { min: 0 },
+            series: [],
+            graphic: []
+        });
+        return;
+    }
+
+    const nearThreshold = 4.5;
+    const dataMax = Math.max(...validValues);
+    const yMax = Math.max(dataMax, currentThreshold, nearThreshold) * 1.18;
+    const maxVal = Math.max(6, Math.ceil(yMax * 10) / 10);
+    const statusAreas = [];
+    if (nearThreshold < currentThreshold) {
+        statusAreas.push([{ yAxis: nearThreshold, itemStyle: { color: 'rgba(245, 158, 11, 0.08)' } }, { yAxis: currentThreshold }]);
+        statusAreas.push([{ yAxis: currentThreshold, itemStyle: { color: 'rgba(220, 38, 38, 0.08)' } }, { yAxis: maxVal }]);
+    } else {
+        statusAreas.push([{ yAxis: currentThreshold, itemStyle: { color: 'rgba(220, 38, 38, 0.08)' } }, { yAxis: maxVal }]);
+    }
+
+    const pointColors = values.map(value => {
+        if (value === null) return '#0f8b9e';
+        if (value >= currentThreshold) return '#dc2626';
+        if (value >= nearThreshold) return '#f59e0b';
+        return '#0f8b9e';
+    });
+    const granularityText = currentGranularity === 'coarse' ? '粗略' : (currentGranularity === 'fine' ? '精细' : '标准');
+    const alarmLegend = `报警阈值(${currentThreshold.toFixed(1)}NTU)`;
+    
+    turbidityChart.setOption({
+        title: { show: false },
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: { type: 'line', lineStyle: { color: '#94a3b8', width: 1, type: 'dashed' } },
+            backgroundColor: '#ffffff',
+            borderColor: '#e2e8f0',
+            borderWidth: 1,
+            textStyle: { color: '#1a2a3a' },
+            formatter: function(params) {
+                const dataIndex = params && params[0] ? params[0].dataIndex : 0;
+                const value = values[dataIndex];
+                const status = value >= currentThreshold ? '已超标' : (value >= nearThreshold ? '接近阈值' : '正常');
+                const statusColor = value >= currentThreshold ? '#dc2626' : (value >= nearThreshold ? '#f59e0b' : '#16a34a');
+                return [
+                    `时间：${fullTimes[dataIndex] || times[dataIndex] || '--'}`,
+                    `浊度：${value == null ? '--' : value.toFixed(2)} NTU`,
+                    `状态：<span style="color:${statusColor};font-weight:700;">${status}</span>`,
+                    `报警阈值：${currentThreshold.toFixed(1)} NTU`,
+                    `接近阈值：${nearThreshold.toFixed(1)} NTU`
+                ].join('<br>');
+            }
+        },
+        legend: {
+            data: [
+                { name: '浊度', icon: 'circle' },
+                { name: '接近预警阈值(4.5NTU)', icon: 'path://M0,5 L36,5' },
+                { name: alarmLegend, icon: 'path://M0,5 L36,5' }
+            ],
+            textStyle: { color: '#64748b' },
+            top: 6,
+            itemWidth: 28,
+            itemHeight: 10
+        },
+        grid: { containLabel: false, left: 56, right: 86, top: 62, bottom: 58 },
+        dataZoom: [
+            { type: 'inside', start: 0, end: 100 },
+            {
+                type: 'slider',
+                height: 28,
+                bottom: 28,
+                start: 0,
+                end: 100,
+                brushSelect: true,
+                showDetail: false,
+                labelFormatter: '',
+                handleIcon: 'path://M0,0',
+                handleSize: 0
+            }
+        ],
+        xAxis: {
+            type: 'category',
+            data: times,
+            axisPointer: { show: true },
+            axisLabel: { color: '#64748b', fontSize: 11, rotate: times.length > 8 ? 35 : 0, hideOverlap: true },
+            axisTick: { alignWithLabel: true }
+        },
+        yAxis: {
+            type: 'value',
+            name: '浊度(NTU)',
+            nameTextStyle: { color: '#64748b', padding: [0, 0, 0, 8] },
+            axisLabel: { color: '#64748b' },
+            min: 0,
+            max: maxVal,
+            splitLine: { lineStyle: { color: '#edf2f7' } }
+        },
+        series: [
+            {
+                name: '浊度',
+                type: 'line',
+                data: values,
+                smooth: true,
+                lineStyle: { color: '#0f8b9e', width: 2.2 },
+                areaStyle: { color: 'rgba(15, 139, 158, 0.10)' },
+                markArea: { silent: true, data: statusAreas },
+                markPoint: {
+                    symbol: 'circle',
+                    symbolSize: 9,
+                    itemStyle: { color: '#dc2626', borderColor: '#ffffff', borderWidth: 2 },
+                    data: values.map((value, index) => value >= currentThreshold ? { coord: [index, value], value: value.toFixed(2) } : null).filter(Boolean)
+                },
+                symbol: 'circle',
+                symbolSize: 5,
+                itemStyle: { color: function(params) { return pointColors[params.dataIndex]; } }
+            },
+            {
+                name: '接近预警阈值(4.5NTU)',
+                type: 'line',
+                data: Array(times.length).fill(nearThreshold),
+                lineStyle: { color: '#f59e0b', width: 1.8, type: 'dashed' },
+                label: { show: false, position: 'end', formatter: '接近预警 4.5 NTU', color: '#d97706', fontWeight: 700 },
+                symbol: 'none'
+            },
+            {
+                name: alarmLegend,
+                type: 'line',
+                data: Array(times.length).fill(currentThreshold),
+                lineStyle: { color: '#dc2626', width: 1.8, type: 'solid' },
+                label: { show: false, position: 'end', formatter: `报警阈值 ${currentThreshold.toFixed(1)} NTU`, color: '#dc2626', fontWeight: 700 },
+                symbol: 'none'
+            }
+        ]
+    }, true);
+    
+    document.getElementById('chartSubtitle').textContent = `数据量：${csvData.length}条｜粒度：${granularityText}｜报警阈值：${currentThreshold.toFixed(1)} NTU`;
+    syncZoomChart();
+}
+
+function updateCurrentStatus() {
+    if (!columnMap.turbidity || csvData.length === 0) {
+        document.getElementById('currentTurbidityText').textContent = '请上传 CSV 文件';
+        document.getElementById('currentStatus').style.color = '#64748b';
+        document.getElementById('currentTurbidityValue').textContent = '--';
+        document.getElementById('currentStatusPill').textContent = '等待数据';
+        document.getElementById('currentStatusPill').className = 'status-pill';
+        document.getElementById('statusUpdateTime').textContent = '--';
+        document.getElementById('activeThresholdText').textContent = `${currentThreshold.toFixed(1)} NTU`;
+        return;
+    }
+    
+    const latest = csvData[csvData.length - 1];
+    const turbidity = parseFloat(latest[columnMap.turbidity]);
+    
+    if (isNaN(turbidity)) {
+        document.getElementById('currentTurbidityText').textContent = '数据无效';
+        document.getElementById('currentTurbidityValue').textContent = '--';
+        document.getElementById('currentStatusPill').textContent = '数据无效';
+        return;
+    }
+    
+    let statusText = `当前浊度: ${turbidity.toFixed(2)} NTU`;
+    let color = '#6fcf97';
+    let pillText = '正常';
+    let pillClass = 'status-pill';
+    
+    if (turbidity > currentThreshold) {
+        statusText += ' (已超标)';
+        color = '#ff6b6b';
+        pillText = '已超标';
+        pillClass = 'status-pill danger';
+    } else if (turbidity > currentThreshold * 0.9) {
+        statusText += ' (接近阈值)';
+        color = '#ffaa44';
+        pillText = '接近阈值';
+        pillClass = 'status-pill warning';
+    } else {
+        statusText += ' (正常)';
+    }
+    
+    document.getElementById('currentTurbidityText').textContent = statusText;
+    document.getElementById('currentStatus').style.color = color;
+    document.getElementById('currentTurbidityValue').textContent = turbidity.toFixed(2);
+    document.getElementById('currentStatusPill').textContent = pillText;
+    document.getElementById('currentStatusPill').className = pillClass;
+    document.getElementById('statusUpdateTime').textContent = columnMap.timestamp ? (latest[columnMap.timestamp] || '--') : '--';
+    document.getElementById('activeThresholdText').textContent = `${currentThreshold.toFixed(1)} NTU`;
+}
+
+function updateDataSummary() {
+    document.getElementById('dataTotalCount').textContent = `${csvData.length || 0} 条`;
+    if (csvData.length > 0 && columnMap.timestamp) {
+        const first = csvData[0][columnMap.timestamp] || '--';
+        const latest = csvData[csvData.length - 1][columnMap.timestamp] || '--';
+        document.getElementById('dataTimeRange').textContent = `${first} 至 ${latest}`;
+    } else {
+        document.getElementById('dataTimeRange').textContent = '--';
+    }
+}
+
+function updateParamsGrid() {
+    const grid = document.getElementById('paramsGrid');
+    const latest = csvData.length > 0 ? csvData[csvData.length - 1] : null;
+    
+    grid.innerHTML = Object.entries(paramRanges).map(([key, param]) => {
+        const colName = columnMap[key];
+        
+        if (!colName || !latest) {
+            return `<div class="param-item">
+                <div class="param-name">${param.name}</div>
+                <div class="param-value no-data">暂无数据</div>
+                <div class="param-status status-none">${param.min}-${param.max}${param.unit}</div>
+            </div>`;
+        }
+        
+        const value = parseFloat(latest[colName]);
+        if (isNaN(value)) {
+            return `<div class="param-item">
+                <div class="param-name">${param.name}</div>
+                <div class="param-value no-data">数据无效</div>
+                <div class="param-status status-none">${param.min}-${param.max}${param.unit}</div>
+            </div>`;
+        }
+        
+        let statusClass = 'status-normal', statusText = '正常';
+        if (value < param.min || value > param.max) {
+            statusClass = 'status-danger';
+            statusText = '异常';
+        } else if (value < param.min + (param.max - param.min) * 0.1 || value > param.max - (param.max - param.min) * 0.1) {
+            statusClass = 'status-warning';
+            statusText = '接近阈值';
+        }
+        
+        return `<div class="param-item">
+            <div class="param-name">${param.name}</div>
+            <div class="param-value">${value.toFixed(key === 'ph' ? 1 : 2)} ${param.unit}</div>
+            <div class="param-status ${statusClass}">${statusText}</div>
+        </div>`;
+    }).join('');
+    
+    if (columnMap.timestamp && latest) {
+        document.getElementById('paramsTime').textContent = latest[columnMap.timestamp] || '--';
+    }
+}
+
+function generateEvents() {
+    const eventList = document.getElementById('eventList');
+    
+    if (!columnMap.turbidity || !columnMap.timestamp || csvData.length === 0) {
+        eventList.innerHTML = `<div class="no-events"><i class="fas fa-inbox" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>请上传 CSV 文件</div>`;
+        return;
+    }
+    
+    const events = [];
+    
+    csvData.forEach(row => {
+        const turbidity = parseFloat(row[columnMap.turbidity]);
+        const timestamp = row[columnMap.timestamp];
+        
+        if (isNaN(turbidity) || !timestamp) return;
+        
+        if (turbidity >= currentThreshold) {
+            events.push({
+                time: timestamp,
+                title: '浊度超标',
+                desc: `浊度 ${turbidity.toFixed(2)} NTU，超过报警阈值 ${currentThreshold.toFixed(1)}`,
+                type: 'danger'
+            });
+        } else if (turbidity >= 4.5) {
+            events.push({
+                time: timestamp,
+                title: '浊度接近阈值',
+                desc: `浊度 ${turbidity.toFixed(2)} NTU，建议关注`,
+                type: 'warning'
+            });
+        }
+    });
+    
+    events.reverse();
+    
+    if (events.length === 0) {
+        eventList.innerHTML = `<div class="no-events"><i class="fas fa-check-circle" style="font-size: 32px; margin-bottom: 12px; display: block; color: #6fcf97;"></i>暂无预警事件，水质正常</div>`;
+        return;
+    }
+    
+    eventList.innerHTML = `
+        <table class="event-table">
+            <thead>
+                <tr>
+                    <th>时间</th>
+                    <th>告警等级</th>
+                    <th>事件描述</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${events.slice(0, 10).map(event => `
+                    <tr class="event-row ${event.type}">
+                        <td>${event.time}</td>
+                        <td><span class="event-level ${event.type}"><i class="fas ${event.type === 'danger' ? 'fa-exclamation-circle' : 'fa-exclamation-triangle'}"></i>${event.type === 'danger' ? '红色告警' : '黄色告警'}</span></td>
+                        <td><strong>${event.title}</strong>，${event.desc}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+function updateAll() {
+    updateDataSummary();
+    updateTurbidityChart();
+    updateCurrentStatus();
+    updateParamsGrid();
+    generateEvents();
+}
+
+function handleUpload(file) {
+    if (!file) return;
+    
+    window.AquaMindData.parseCSV(file, function(result) {
+        csvData = result.data;
+        columnMap = result.columnMap;
+        
+        document.getElementById('dataSourceName').textContent = result.fileName;
+        document.getElementById('lastUpdateTime').textContent = new Date().toLocaleString('zh-CN');
+        
+        updateAll();
+        
+        alert(`✅ 已上传 ${result.fileName}\n共 ${result.recordCount} 条数据\n🔄 所有板块已同步更新`);
+        
+    }, function(error) {
+        alert('❌ ' + error);
+    });
+}
+
+function loadFromStorage() {
+    if (!window.AquaMindData || !window.AquaMindData.hasData()) return;
+    
+    csvData = window.AquaMindData.getData();
+    const meta = window.AquaMindData.getMeta();
+    columnMap = window.AquaMindData.detectColumns(Object.keys(csvData[0]));
+    
+    if (meta) {
+        document.getElementById('dataSourceName').textContent = meta.fileName;
+        document.getElementById('lastUpdateTime').textContent = new Date(meta.uploadTime).toLocaleString('zh-CN');
+    }
+
+    updateAll();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    initChart();
+    
+    // 阈值切换
+    document.querySelectorAll('.threshold-option').forEach(option => {
+        option.addEventListener('click', function() {
+            document.querySelectorAll('.threshold-option').forEach(opt => opt.classList.remove('active'));
+            this.classList.add('active');
+            currentThreshold = parseFloat(this.getAttribute('data-threshold'));
+            updateTurbidityChart();
+            updateCurrentStatus();
+            generateEvents();
+        });
+    });
+
+    document.getElementById('downloadChartBtn').addEventListener('click', function() {
+        if (!turbidityChart || csvData.length === 0) {
+            alert('请先上传 CSV 数据后再下载图表');
+            return;
+        }
+        const url = turbidityChart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#ffffff' });
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '取水口浊度时序趋势.png';
+        a.click();
+    });
+
+    document.getElementById('zoomChartBtn').addEventListener('click', openChartZoom);
+    document.getElementById('closeChartZoomBtn').addEventListener('click', closeChartZoom);
+    document.getElementById('chartZoomModal').addEventListener('click', function(event) {
+        if (event.target === this) closeChartZoom();
+    });
+    document.getElementById('downloadZoomChartBtn').addEventListener('click', function() {
+        if (!turbidityChartZoom || csvData.length === 0) {
+            alert('请先上传 CSV 数据后再下载图表');
+            return;
+        }
+        const url = turbidityChartZoom.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#ffffff' });
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '取水口浊度时序趋势-放大图.png';
+        a.click();
+    });
+    
+    // 上传按钮
+    document.getElementById('uploadBtn').addEventListener('click', function() {
+        document.getElementById('csvFileInput').click();
+    });
+    
+    document.getElementById('csvFileInput').addEventListener('change', function(e) {
+        handleUpload(e.target.files[0]);
+        this.value = '';
+    });
+    
+    // 下载示例
+    document.getElementById('downloadSampleBtn').addEventListener('click', function() {
+        const sampleData = [
+            ['时间', '浊度', 'pH', '余氯', 'COD', '氨氮'],
+            ['2026-03-24 08:00', '5.4', '7.2', '0.38', '2.1', '0.12'],
+            ['2026-03-24 09:00', '5.2', '7.1', '0.36', '2.2', '0.13'],
+            ['2026-03-24 10:00', '4.8', '7.0', '0.34', '2.5', '0.15'],
+            ['2026-03-24 11:00', '5.1', '7.2', '0.35', '2.3', '0.14'],
+            ['2026-03-24 12:00', '5.5', '7.3', '0.37', '2.2', '0.13']
+        ];
+        const csvContent = '\uFEFF' + sampleData.map(row => row.join(',')).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'sample.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+    
+    // 导出报告
+    document.getElementById('exportReportBtn').addEventListener('click', function() {
+        if (csvData.length === 0) {
+            alert('❌ 请先上传 CSV 文件');
+            return;
+        }
+        const latest = csvData[csvData.length - 1];
+        const turbidity = columnMap.turbidity ? parseFloat(latest[columnMap.turbidity]) : null;
+        alert(`📄 水质预警报告\n\n当前浊度: ${turbidity ? turbidity.toFixed(2) + ' NTU' : '无数据'}\n阈值: ${currentThreshold} NTU\n数据条数: ${csvData.length}`);
+    });
+    
+    // 智能报告弹窗
+    document.getElementById('smartReportBtn').addEventListener('click', generateSmartReport);
+    
+    // 粒度控制
+    document.querySelectorAll('.granularity-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.granularity-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            currentGranularity = this.getAttribute('data-granularity');
+            if (csvData.length > 0) {
+                updateTurbidityChart(csvData, columnMap);
+            }
+        });
+    });
+    
+    // 窗口大小变化
+    window.addEventListener('resize', function() {
+        if (turbidityChart) turbidityChart.resize();
+        if (turbidityChartZoom) turbidityChartZoom.resize();
+    });
+    
+    // 全局数据事件
+    window.addEventListener('aquamind:data-ready', loadFromStorage);
+    window.addEventListener('aquamind:data-updated', function() {
+        loadFromStorage();
+        alert('🔄 其他页面已更新数据，当前页面已同步');
+    });
+    
+    // 初始加载
+    setTimeout(loadFromStorage, 100);
+});
+</script>
+
+<!-- 悬浮AI按钮 -->
+<button class="floating-ai-btn" id="aiFloatBtn" title="AI助手">
+    <i class="fas fa-robot"></i>
+</button>
+
+<!-- AI 对话框 -->
+<div id="aiDialog" style="display: none; position: fixed; bottom: 100px; right: 30px; width: 380px; height: 520px; background: #ffffff; backdrop-filter: blur(12px); border-radius: 24px; border: 1px solid #e2e8f0; box-shadow: 0 10px 40px rgba(0,0,0,0.4); z-index: 1001; flex-direction: column; overflow: hidden;">
+    <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 8px; font-weight: 600;">
+            <i class="fas fa-robot" style="color: #0f8b9e;"></i>
+            <span>AI水务顾问</span>
+            <span style="font-size: 10px; background: rgba(15, 139, 158, 0.15); padding: 2px 8px; border-radius: 20px;">GLM-4-Flash</span>
+        </div>
+        <button id="closeDialog" style="background: none; border: none; color: #64748b; font-size: 18px; cursor: pointer;">✕</button>
+    </div>
+    <div id="dialogChatMessages" style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; justify-content: flex-start;">
+            <div style="max-width: 85%; padding: 10px 14px; border-radius: 18px; background: #f1f5f9; color: #1a2a3a; border-bottom-left-radius: 4px; font-size: 13px; line-height: 1.5;">?? 你好，我是智慧水务AI助手！<br><br>可以问我关于水质、加药、设备健康、能效调度等方面的问题。</div>
+        </div>
+    </div>
+    <div style="padding: 16px; border-top: 1px solid #e2e8f0; display: flex; gap: 10px;">
+        <input type="text" id="dialogChatInput" placeholder="输入问题，例如：分析当前水质..." style="flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 30px; padding: 10px 16px; color: #1a2a3a; font-size: 13px; outline: none;">
+        <button id="dialogSendBtn" style="background: linear-gradient(135deg, #0e7b9e, #1baa7a); border: none; border-radius: 30px; padding: 0 18px; color: #ffffff; cursor: pointer; font-size: 13px;">发送</button>
+    </div>
+    <div class="resize-handle" id="resizeHandle"></div>
+</div>
+
+<style>
+/* AI 对话框拉伸功能 */
+#aiDialog {
+    min-width: 300px;
+    min-height: 350px;
+    max-width: 800px;
+    max-height: 90vh;
+}
+.resize-handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    cursor: se-resize;
+    background: linear-gradient(135deg, transparent 50%, rgba(15, 139, 158, 0.5) 50%);
+    border-bottom-right-radius: 24px;
+    z-index: 1002;
+}
+.resize-handle:hover {
+    background: linear-gradient(135deg, transparent 50%, rgba(15, 139, 158, 0.8) 50%);
+}
+.resize-handle::after {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid rgba(15, 139, 158, 0.6);
+    border-bottom: 2px solid rgba(15, 139, 158, 0.6);
+}
+
+.floating-ai-btn {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0e7b9e, #1baa7a);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 24px;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(14, 123, 158, 0.4);
+    transition: all 0.3s ease;
+    z-index: 1000;
+}
+.floating-ai-btn:hover {
+    transform: scale(1.1) rotate(-5deg);
+    box-shadow: 0 6px 30px rgba(14, 123, 158, 0.6);
+}
+</style>
+
+<script>
+// AI 对话框功能
+(function() {
+    const floatBtn = document.getElementById('aiFloatBtn');
+    const dialog = document.getElementById('aiDialog');
+    const closeBtn = document.getElementById('closeDialog');
+    const sendBtn = document.getElementById('dialogSendBtn');
+    const input = document.getElementById('dialogChatInput');
+    const messages = document.getElementById('dialogChatMessages');
+    
+    // 打开对话框
+    floatBtn.addEventListener('click', function() {
+        dialog.style.display = dialog.style.display === 'flex' ? 'none' : 'flex';
+        if (dialog.style.display === 'flex') input.focus();
+    });
+    
+    // 关闭对话框
+    closeBtn.addEventListener('click', function() {
+        dialog.style.display = 'none';
+    });
+    
+    // 对话框拉伸功能
+    const resizeHandle = document.getElementById('resizeHandle');
+    let isResizing = false;
+    let startX, startY, startWidth, startHeight;
+    
+    resizeHandle.addEventListener('mousedown', function(e) {
+        isResizing = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        startWidth = parseInt(document.defaultView.getComputedStyle(dialog).width, 10);
+        startHeight = parseInt(document.defaultView.getComputedStyle(dialog).height, 10);
+        e.preventDefault();
+    });
+    
+    document.addEventListener('mousemove', function(e) {
+        if (!isResizing) return;
+        const newWidth = startWidth + e.clientX - startX;
+        const newHeight = startHeight + e.clientY - startY;
+        if (newWidth >= 300 && newWidth <= 800) dialog.style.width = newWidth + 'px';
+        if (newHeight >= 350 && newHeight <= window.innerHeight * 0.9) dialog.style.height = newHeight + 'px';
+    });
+    
+    document.addEventListener('mouseup', function() {
+        isResizing = false;
+    });
+    
+    // 添加消息
+    function addMessage(text, isUser) {
+        const div = document.createElement('div');
+        div.style.display = 'flex';
+        div.style.justifyContent = isUser ? 'flex-end' : 'flex-start';
+        div.innerHTML = '<div style="max-width: 85%; padding: 10px 14px; border-radius: 18px; font-size: 13px; line-height: 1.5; ' + 
+            (isUser ? 'background: linear-gradient(135deg, #0e7b9e, #1baa7a); color: #ffffff; border-bottom-right-radius: 4px;' : 'background: #f1f5f9; color: #1a2a3a; border-bottom-left-radius: 4px;') + '">' + text + '</div>';
+        messages.appendChild(div);
+        messages.scrollTop = messages.scrollHeight;
+    }
+    
+    // 从 localStorage 读取数据并构建系统提示词
+    function generateSystemPrompt() {
+        const waterDataStr = localStorage.getItem('waterData');
+        if (!waterDataStr) {
+            return '你是智慧水务AI助手。当前暂无数据，请提示用户先上传CSV文件。';
+        }
+        
+        try {
+            const waterData = JSON.parse(waterDataStr);
+            if (!waterData.data || waterData.data.length === 0) {
+                return '你是智慧水务AI助手。当前暂无数据，请提示用户先上传CSV文件。';
+            }
+            
+            const data = waterData.data;
+            const latest = data[data.length - 1];
+            const first = data[0];
+            
+            // 检测列名
+            const headers = Object.keys(latest);
+            const turbidityCol = headers.find(h => /浊度|turbidity/i.test(h));
+            const dosageCol = headers.find(h => /加药| dosage|pac/i.test(h));
+            const phCol = headers.find(h => /ph|酸碱/i.test(h));
+            const timestampCol = headers.find(h => /时间|timestamp|date/i.test(h));
+            
+            // 计算统计数据
+            let currentTurbidity = null, avgTurbidity = null, maxTurbidity = null, exceedCount = 0;
+            if (turbidityCol) {
+                const turbidityVals = data.map(r => parseFloat(r[turbidityCol])).filter(v => !isNaN(v));
+                if (turbidityVals.length > 0) {
+                    currentTurbidity = parseFloat(latest[turbidityCol]);
+                    avgTurbidity = (turbidityVals.reduce((a,b) => a+b, 0) / turbidityVals.length).toFixed(2);
+                    maxTurbidity = Math.max(...turbidityVals).toFixed(2);
+                    exceedCount = turbidityVals.filter(v => v >= 5.0).length;
+                }
+            }
+            
+            let currentDosage = null;
+            if (dosageCol) {
+                currentDosage = parseFloat(latest[dosageCol]);
+            }
+            
+            // 构建提示词
+            let dataContext = `【实时水务数据】数据源: ${waterData.fileName || '未命名'}, 记录数: ${data.length}`;
+            if (timestampCol) {
+                dataContext += `, 数据时间范围: ${first[timestampCol]} 至 ${latest[timestampCol]}`;
+            }
+            if (currentTurbidity !== null) {
+                dataContext += `, 最新浊度: ${currentTurbidity.toFixed(2)} NTU`;
+            }
+            if (avgTurbidity !== null) {
+                dataContext += `, 平均浊度: ${avgTurbidity} NTU, 最高浊度: ${maxTurbidity} NTU, 超标次数(≥5.0): ${exceedCount}`;
+            }
+            if (currentDosage !== null && !isNaN(currentDosage)) {
+                dataContext += `, 最新加药量: ${currentDosage.toFixed(2)} mg/L`;
+            }
+            if (phCol) {
+                const phVal = parseFloat(latest[phCol]);
+                if (!isNaN(phVal)) {
+                    dataContext += `, 当前pH: ${phVal.toFixed(2)}`;
+                }
+            }
+            
+            return `你是智慧水务AI助手。${dataContext}。请基于这些实时数据回答用户问题，如果数据不足请明确告知。`;
+        } catch (e) {
+            return '你是智慧水务AI助手。当前数据读取异常，请提示用户重新上传CSV文件。';
+        }
+    }
+    
+    // 发送消息
+    async function sendMessage() {
+        const text = input.value.trim();
+        if (!text) return;
+        
+        addMessage(text, true);
+        input.value = '';
+
+        // 显示加载状态
+        const loading = document.createElement('div');
+        loading.id = 'ai-loading';
+        loading.style.display = 'flex';
+        loading.style.justifyContent = 'flex-start';
+        loading.innerHTML = '<div style="padding: 10px 14px; border-radius: 18px; background: #f1f5f9; color: #64748b; font-size: 13px;">AI 正在思考...</div>';
+        messages.appendChild(loading);
+        messages.scrollTop = messages.scrollHeight;
+        
+        try {
+            const systemPrompt = generateSystemPrompt();
+            const response = await fetch('http://localhost:5000/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: text }
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 2048
+                })
+            });
+            
+            loading.remove();
+            
+            if (response.ok) {
+                const data = await response.json();
+                const reply = data.choices?.[0]?.message?.content || '抱歉，我暂时无法处理这个请求。';
+                addMessage(reply.replace(/\n/g, '<br>'), false);
+            } else {
+                addMessage('?? AI 服务暂时不可用，请检查服务是否启动。', false);
+            }
+        } catch (e) {
+            loading.remove();
+            addMessage('?? 无法连接到 AI 服务，请运行 python server.py 启动服务。', false);
+        }
+    }
+    
+    sendBtn.addEventListener('click', sendMessage);
+    input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') sendMessage();
+    });
+})();
+</script>
+<!-- 智能报告弹窗 -->
+<div id="reportModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(12px); z-index: 3000; align-items: center; justify-content: center;">
+    <div class="modal-container" style="width: 500px; max-height: 80vh; background: #ffffff; border-radius: 24px; border: 1px solid #e2e8f0; box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 0 40px rgba(15, 139, 158, 0.08); display: flex; flex-direction: column; overflow: hidden;">
+        <div class="modal-header" style="padding: 24px 24px 16px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+            <h2 id="modalTitle" style="font-size: 20px; font-weight: 700; background: linear-gradient(135deg, #0f8b9e, #1faa7a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0;"></h2>
+            <button onclick="closeReportModal()" style="background: none; border: none; color: #64748b; font-size: 28px; cursor: pointer; transition: color 0.2s;">&times;</button>
+        </div>
+        <div id="modalBody" style="flex: 1; overflow-y: auto; padding: 20px 24px;"></div>
+        <div class="modal-footer" style="padding: 16px 24px 24px; display: flex; gap: 12px; justify-content: flex-end; border-top: 1px solid #e2e8f0;">
+            <button onclick="copyReport()" style="padding: 10px 20px; border-radius: 30px; font-size: 13px; cursor: pointer; transition: all 0.2s; border: 1px solid #0f8b9e; background: rgba(15, 139, 158, 0.08); color: #0f8b9e; display: flex; align-items: center; gap: 6px;"><i class="fas fa-copy"></i> 复制报告</button>
+            <button onclick="exportPDF()" style="padding: 10px 20px; border-radius: 30px; font-size: 13px; cursor: pointer; transition: all 0.2s; border: none; background: linear-gradient(135deg, #0e7b9e, #1baa7a); color: #ffffff; display: flex; align-items: center; gap: 6px;"><i class="fas fa-file-pdf"></i> 导出 PDF</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// 智能报告生成函数
+function generateSmartReport() {
+    if (!csvData || csvData.length === 0) {
+        showReportModal('❌ 提示', '<p style="color: #64748b;">请先上传 CSV 文件后生成报告。</p>');
+        return;
+    }
+    
+    const latest = csvData[csvData.length - 1];
+    const first = csvData[0];
+    const turbidity = columnMap.turbidity ? parseFloat(latest[columnMap.turbidity]) : null;
+    const turbidityCol = columnMap.turbidity;
+    const turbValues = turbidityCol ? csvData.map(r => parseFloat(r[turbidityCol])).filter(v => !isNaN(v)) : [];
+    const avgTurb = turbValues.length > 0 ? (turbValues.reduce((a,b) => a+b, 0) / turbValues.length) : 0;
+    const maxTurb = turbValues.length > 0 ? Math.max(...turbValues) : 0;
+    const exceedCount = turbValues.filter(v => v >= currentThreshold).length;
+    
+    const timeStart = first[columnMap.timestamp] || '--';
+    const timeEnd = latest[columnMap.timestamp] || '--';
+    
+    const reportHTML = `
+        <div style="margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #e2e8f0;">
+            <h3 style="font-size: 14px; color: #0f8b9e; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;"><i class="fas fa-chart-pie"></i> 数据概览</h3>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                <div style="background: #f8fafc; padding: 12px 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 4px;">
+                    <span style="font-size: 11px; color: #64748b;">数据条数</span>
+                    <span style="font-size: 18px; font-weight: 700; color: #1a2a3a;">${csvData.length} 条</span>
+                </div>
+                <div style="background: #f8fafc; padding: 12px 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 4px;">
+                    <span style="font-size: 11px; color: #64748b;">时间范围</span>
+                    <span style="font-size: 12px; font-weight: 600; color: #1a2a3a;">${timeStart} 至 ${timeEnd}</span>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #e2e8f0;">
+            <h3 style="font-size: 14px; color: #0f8b9e; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;"><i class="fas fa-tint"></i> 水质分析</h3>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                <div style="background: #f8fafc; padding: 12px 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 4px;">
+                    <span style="font-size: 11px; color: #64748b;">平均浊度</span>
+                    <span style="font-size: 18px; font-weight: 700; color: ${avgTurb > currentThreshold ? '#ff6b6b' : '#1baa7a'};">${avgTurb.toFixed(2)} NTU</span>
+                </div>
+                <div style="background: #f8fafc; padding: 12px 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 4px;">
+                    <span style="font-size: 11px; color: #64748b;">最高浊度</span>
+                    <span style="font-size: 18px; font-weight: 700; color: ${maxTurb > currentThreshold ? '#ff6b6b' : '#1baa7a'};">${maxTurb.toFixed(2)} NTU</span>
+                </div>
+                <div style="background: #f8fafc; padding: 12px 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 4px; grid-column: span 2;">
+                    <span style="font-size: 11px; color: #64748b;">超标次数 (≥${currentThreshold} NTU)</span>
+                    <span style="font-size: 18px; font-weight: 700; color: ${exceedCount > 0 ? '#ff6b6b' : '#1baa7a'};">${exceedCount} 次</span>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #e2e8f0;">
+            <h3 style="font-size: 14px; color: #0f8b9e; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;"><i class="fas fa-flask"></i> 加药建议</h3>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                <div style="background: #f8fafc; padding: 12px 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 4px;">
+                    <span style="font-size: 11px; color: #64748b;">AI推荐加药量</span>
+                    <span style="font-size: 18px; font-weight: 700; color: #1a2a3a;">${turbidity ? (8 + (turbidity - 1) * 0.5).toFixed(1) : '--'} mg/L</span>
+                </div>
+                <div style="background: #f8fafc; padding: 12px 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 4px;">
+                    <span style="font-size: 11px; color: #64748b;">预计节省成本</span>
+                    <span style="font-size: 18px; font-weight: 700; color: #1baa7a;">15-20%</span>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 16px;">
+            <h3 style="font-size: 14px; color: #0f8b9e; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;"><i class="fas fa-lightbulb"></i> AI 建议</h3>
+            <div style="background: rgba(15, 139, 158, 0.08); padding: 16px; border-radius: 12px; font-size: 14px; line-height: 1.6;">
+                ${turbidity > currentThreshold 
+                    ? '<span style="color: #ff6b6b;">⚠️ 当前浊度超过阈值，建议立即调整加药量并检查原水水质。</span>' 
+                    : '<span style="color: #1baa7a;">✓ 水质正常，保持当前运行参数，建议继续监控。</span>'}
+            </div>
+        </div>
+        
+        <div style="padding-top: 16px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b;">
+            <p>📅 报告生成时间: ${new Date().toLocaleString('zh-CN')}</p>
+        </div>
+    `;
+    
+    showReportModal('📄 水质分析报告', reportHTML);
+
+}
+
+function showReportModal(title, content) {
+    const modal = document.getElementById('reportModal');
+    document.getElementById('modalTitle').innerHTML = title;
+    document.getElementById('modalBody').innerHTML = content;
+    modal.style.display = 'flex';
+    
+    // 点击背景关闭
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeReportModal();
+    });
+}
+
+function closeReportModal() {
+    document.getElementById('reportModal').style.display = 'none';
+}
+
+function copyReport() {
+    const body = document.getElementById('modalBody');
+    const text = body.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+        alert('报告已复制到剪贴板');
+    }).catch(() => {
+        alert('复制失败，请手动复制');
+    });
+}
+
+function exportPDF() {
+    window.print();
+}
+</script>
+
+<!-- 返回工艺地图按钮 -->
+<button class="return-map-btn" onclick="location.href='process_map.html'" title="返回工艺地图" aria-label="返回工艺地图">
+    <i class="fas fa-map-marked-alt"></i>
+    <span class="return-tip">返回工艺地图</span>
+</button>
+
+</body>
+</html>

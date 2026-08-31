@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智慧水务 - 能效调度</title>
+    <link rel="stylesheet" href="assets/css/system-fonts.css">
+    <link rel="stylesheet" href="assets/css/font-awesome.min.css">
+    <!-- 公共样式文件 -->
+    <link rel="stylesheet" href="styles/theme.css">
+    <link rel="stylesheet" href="styles/layout.css">
+    <link rel="stylesheet" href="styles/ai-assistant.css">
+    <script src="assets/js/echarts.min.js"></script>
+    <script src="assets/js/papaparse.min.js"></script>
+    <script src="components/auth.js"></script>
+    <script src="shared-data.js"></script>
+    <script src="components/sidebar-nav.js"></script>
+    <script src="components/ai-assistant.js"></script>
+    <script src="components/data-status.js"></script>
+    <style>
+        /* 页面特定样式 - 公共样式已在 theme.css 和 layout.css 中定义 */
+        .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px; }
+        .kpi-card { background: #ffffff; border-radius: var(--radius-md); padding: 20px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); }
+        .kpi-title { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
+        .kpi-value { font-size: 32px; font-weight: 800; }
+        .kpi-value.no-data { font-size: 18px; color: var(--text-secondary); font-weight: 400; }
+        .kpi-unit { font-size: 14px; font-weight: 400; color: var(--text-secondary); }
+        .kpi-sub { font-size: 12px; margin-top: 8px; }
+        .saving { color: var(--status-success); }
+        .price-card { background: linear-gradient(135deg, rgba(14, 123, 158, 0.1), rgba(27, 170, 122, 0.05)); border-radius: var(--radius-md); padding: 20px; margin-bottom: 24px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); }
+        .price-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+        .time-slots { display: flex; gap: 16px; margin-top: 16px; flex-wrap: wrap; }
+        .slot-item { flex: 1; background: linear-gradient(135deg, rgba(15, 139, 158, 0.1), rgba(31, 170, 122, 0.05)); border-radius: var(--radius-md); padding: 12px; text-align: center; min-width: 140px; border: 1px solid rgba(15, 139, 158, 0.2); }
+        .slot-name { font-weight: 600; margin-bottom: 8px; }
+        .slot-time { font-size: 14px; color: var(--text-secondary); }
+        .slot-price { font-size: 20px; font-weight: 700; margin-top: 8px; }
+        .slot-valley { color: var(--accent-primary); }
+        .slot-flat { color: var(--text-secondary); }
+        .slot-peak { color: var(--status-warning); }
+        .three-columns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 24px; }
+        .chart-card { background: #ffffff; border-radius: var(--radius-md); padding: 20px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+        .chart-header h3 { font-size: 18px; font-weight: 600; }
+        .chart-container { height: 220px; width: 100%; }
+        .chart-heading-actions { display:flex; align-items:center; justify-content:flex-end; gap:8px; }
+        .chart-expand-btn { width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border:1px solid #cfe2e7; border-radius:7px; background:#fff; color:#0f8b9e; cursor:pointer; transition:.18s ease; }
+        .chart-expand-btn:hover { background:#eef9fa; border-color:#0f8b9e; }
+        .chart-modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:24px; background:rgba(15,23,42,.62); z-index:2300; }
+        .chart-modal.open { display:flex; }
+        .chart-modal-dialog { width:min(1180px,96vw); height:min(760px,90vh); background:#fff; border-radius:12px; box-shadow:0 28px 80px rgba(15,23,42,.3); display:flex; flex-direction:column; overflow:hidden; }
+        .chart-modal-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 20px; border-bottom:1px solid #e5eef3; }
+        .chart-modal-head h3 { margin:0 0 4px; color:#0f172a; }
+        .chart-modal-subtitle { color:#64748b; font-size:12px; }
+        .chart-modal-close { border:0; background:transparent; color:#64748b; font-size:20px; cursor:pointer; }
+        .chart-modal-body { flex:1; min-height:0; padding:16px 20px 20px; }
+        #expandedEnergyChart { width:100%; height:100%; }
+        .cost-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:12px; }
+        .cost-summary-item { padding:11px 14px; border:1px solid #e5eef3; border-radius:7px; background:#f8fbfc; }
+        .cost-summary-item span { display:block; color:#64748b; font-size:11px; margin-bottom:4px; }
+        .cost-summary-item strong { color:#0f172a; font-size:17px; }
+        .cost-summary-item.saving strong { color:#15803d; }
+        .calculation-note { margin-top:10px; padding:10px 12px; border-left:3px solid #0f8b9e; background:#f2f9fa; color:#526577; font-size:12px; line-height:1.6; }
+        .schedule-card { background: #ffffff; border-radius: 24px; padding: 20px; margin-bottom: 24px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .schedule-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        .schedule-table th, .schedule-table td { padding: 12px 8px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+        .schedule-table th { color: #64748b; font-weight: 500; }
+        .upload-card { background: #ffffff; border-radius: 20px; padding: 16px 20px; margin-top: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .upload-btn { background: rgba(15, 139, 158, 0.1); border: 1px solid #0f8b9e; padding: 6px 16px; border-radius: 30px; font-size: 12px; cursor: pointer; color: #0f8b9e; }
+        .upload-btn:hover { background: rgba(15, 139, 158, 0.2); }
+        .no-data { text-align: center; padding: 40px; color: #64748b; }
+
+        /* 新增：LLM主动风险提示条 */
+        .risk-alert {
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.2), rgba(255, 170, 68, 0.1));
+            border-left: 4px solid #ff6b6b;
+            border-radius: 16px;
+            padding: 14px 20px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .risk-content { display: flex; align-items: center; gap: 12px; }
+        .risk-icon { font-size: 20px; color: #ffaa44; }
+        .risk-text { font-size: 14px; }
+        .risk-btn { background: rgba(255, 107, 107, 0.2); border: none; padding: 6px 16px; border-radius: 30px; color: #ff6b6b; cursor: pointer; font-size: 12px; }
+        
+        /* 新增：粒度控制 */
+        .granularity-control { display: flex; align-items: center; gap: 8px; }
+        .granularity-btn { background: rgba(15, 139, 158, 0.1); border: none; padding: 4px 10px; border-radius: 20px; font-size: 11px; cursor: pointer; color: #64748b; transition: 0.2s; }
+        .granularity-btn.active { background: rgba(15, 139, 158, 0.2); color: #0f8b9e; }
+        
+        /* 语音按钮录音状态 */
+        #voiceBtn {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        #voiceBtn.recording {
+            background: linear-gradient(135deg, #ff6b6b, #ff8e8e) !important;
+            border-color: #ff6b6b !important;
+            color: white !important;
+            animation: pulse 1s infinite;
+        }
+        #voiceBtn.recording::after {
+            content: ' 录音中...';
+            font-size: 11px;
+            margin-left: 4px;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(255, 107, 107, 0); }
+        }
+        
+        /* 新增：智能报告弹窗 */
+        .report-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .report-card {
+            background: #ffffff;
+            border-radius: 28px;
+            width: 520px;
+            max-width: 90%;
+            max-height: 80vh;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+        }
+        .report-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .report-header h3 { font-size: 20px; font-weight: 700; background: linear-gradient(135deg, #0f8b9e, #1faa7a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .report-close { background: none; border: none; color: #64748b; font-size: 24px; cursor: pointer; }
+        .report-content { padding: 24px; overflow-y: auto; flex: 1; }
+        .report-section { margin-bottom: 24px; }
+        .report-section-title { font-size: 14px; font-weight: 600; color: #0f8b9e; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .report-data-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+        .report-data-label { color: #64748b; }
+        .report-data-value { font-weight: 500; color: #1e2a3a; }
+        .report-data-value.highlight { color: #0f8b9e; font-weight: 700; }
+        .report-footer { padding: 16px 24px; border-top: 1px solid #e2e8f0; display: flex; gap: 12px; justify-content: flex-end; }
+        .report-btn { padding: 8px 20px; border-radius: 30px; font-size: 12px; cursor: pointer; background: rgba(15, 139, 158, 0.1); border: 1px solid #0f8b9e; color: #0f8b9e; }
+        .report-btn-primary { background: linear-gradient(135deg, #0e7b9e, #1baa7a); border: none; color: white; }
+        
+        /* 成功提示 */
+        .success-toast {
+            position: fixed;
+            top: 80px;
+            right: 30px;
+            background: linear-gradient(135deg, #2c9b77, #1baa7a);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-size: 13px;
+            z-index: 1500;
+            animation: slideIn 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        /* AI推荐解释 */
+        .explain-tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            margin-left: 8px;
+            color: #0f8b9e;
+            font-size: 12px;
+        }
+        .explain-tooltip .tooltip-text {
+            visibility: hidden;
+            width: 260px;
+            background: #ffffff;
+            backdrop-filter: blur(8px);
+            color: #1e2a3a;
+            text-align: center;
+            border-radius: 12px;
+            padding: 10px 15px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -130px;
+            font-size: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            line-height: 1.5;
+        }
+        .explain-tooltip:hover .tooltip-text { visibility: visible; }
+        
+        /* AI对话框拉伸 */
+        .resize-handle {
+            position: absolute; bottom: 0; right: 0; width: 20px; height: 20px;
+            cursor: se-resize; background: linear-gradient(135deg, transparent 50%, rgba(15, 139, 158, 0.5) 50%);
+            border-bottom-right-radius: 24px; z-index: 1002;
+        }
+        .resize-handle:hover { background: linear-gradient(135deg, transparent 50%, rgba(15, 139, 158, 0.8) 50%); }
+        .page-container { background:#f6fafb; }
+        .page-header { background:transparent; border:0; box-shadow:none; padding:0 0 18px; }
+        .page-header h1 { color:#0f172a; font-size:24px; }
+        .upload-card { margin:0 0 18px; border-radius:8px; box-shadow:0 8px 24px rgba(15,23,42,.045); }
+        .upload-btn,.granularity-btn,.risk-btn { border-radius:6px; }
+        .kpi-row { grid-template-columns:repeat(6,minmax(0,1fr)); gap:12px; margin-bottom:18px; }
+        .kpi-card { border-radius:8px; padding:16px; box-shadow:0 8px 24px rgba(15,23,42,.045); }
+        .kpi-value { color:#0f172a; font-size:28px; }
+        .price-card,.chart-card,.schedule-card { border-radius:8px; border-color:#e2ebee; box-shadow:0 8px 24px rgba(15,23,42,.045); }
+        .price-card { margin-bottom:18px; }
+        .three-columns { gap:16px; margin-bottom:18px; }
+        .chart-container { height:260px; }
+        .decision-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:18px; }
+        .scenario-card { background:#fff; border:1px solid #e2ebee; border-radius:8px; padding:16px; cursor:pointer; text-align:left; transition:.2s; }
+        .scenario-card:hover,.scenario-card.selected { border-color:#0f8b9e; box-shadow:0 8px 22px rgba(15,139,158,.12); transform:translateY(-1px); }
+        .scenario-card.selected { background:#f0fbfa; }
+        .scenario-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px; }
+        .scenario-head strong { color:#0f172a; font-size:16px; }
+        .scenario-badge { padding:4px 8px; border-radius:999px; background:#e8f7f5; color:#0f8b9e; font-size:11px; }
+        .scenario-metrics { display:grid; grid-template-columns:repeat(2,1fr); gap:9px; }
+        .scenario-metric { padding-top:9px; border-top:1px solid #edf2f4; }
+        .scenario-metric span { display:block; color:#64748b; font-size:11px; }
+        .scenario-metric strong { display:block; margin-top:4px; color:#0f172a; font-size:15px; }
+        .scenario-switcher { background:#fff; border:1px solid #e2ebee; border-radius:8px; margin-bottom:18px; box-shadow:0 6px 18px rgba(15,23,42,.035); overflow:hidden; }
+        .scenario-tabs { display:flex; align-items:stretch; border-bottom:1px solid #e5eef3; background:#f8fbfc; padding:5px; gap:4px; }
+        .scenario-tab { flex:1; border:0; background:transparent; color:#475569; padding:10px 12px; border-radius:6px; cursor:pointer; font:inherit; font-size:13px; font-weight:600; }
+        .scenario-tab:hover { background:#eef6f7; color:#0f8b9e; }
+        .scenario-tab[aria-selected="true"] { background:#fff; color:#0f8b9e; box-shadow:0 1px 5px rgba(15,23,42,.10); }
+        .scenario-tab small { margin-left:5px; color:#64748b; font-size:11px; font-weight:500; }
+        .scenario-tab[aria-selected="true"] small { color:#0f8b9e; }
+        .selected-scenario { display:grid; grid-template-columns:minmax(180px,.7fr) repeat(4,minmax(120px,1fr)) auto; align-items:stretch; }
+        .selected-scenario-title,.selected-metric,.selected-scenario-action { padding:15px 17px; }
+        .selected-scenario-title { background:#f4fbfa; }
+        .selected-scenario-title strong { display:block; color:#0f172a; font-size:17px; margin-bottom:5px; }
+        .selected-scenario-title span { color:#64748b; font-size:12px; }
+        .selected-metric { border-left:1px solid #edf2f4; }
+        .selected-metric span { color:#64748b; font-size:11px; }
+        .selected-metric strong { display:block; margin-top:6px; color:#0f172a; font-size:19px; }
+        .selected-scenario-action { display:flex; align-items:center; border-left:1px solid #edf2f4; }
+        .constraint-card { display:block; background:#fff; border:1px solid #e2ebee; border-radius:8px; padding:17px 18px; margin-bottom:18px; box-shadow:0 6px 18px rgba(15,23,42,.035); }
+        .constraint-list { display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:12px; }
+        .constraint-item { padding:5px 0; font-size:12px; color:#64748b; }
+        .constraint-item i { color:#16a34a; margin-right:5px; }
+        .constraint-item.failed { color:#b91c1c; background:#fff5f3; border:1px solid #fecaca; border-radius:6px; padding:5px 8px; }
+        .constraint-item.failed i { color:#dc2626; }
+        .decision-actions { display:flex; gap:9px; flex-wrap:wrap; justify-content:flex-end; }
+        .constraint-card .decision-actions { margin-top:14px; padding-top:12px; border-top:1px solid #edf2f4; }
+        .data-source-note { color:#64748b; font-size:11px; margin-top:4px; }
+        .schedule-table-wrap { overflow:auto; }
+        .schedule-table { min-width:980px; }
+        .schedule-table th { background:#f8fbfc; font-weight:700; }
+        .status-chip { padding:4px 7px; border-radius:999px; font-size:11px; background:#fef3c7; color:#92400e; white-space:nowrap; }
+        .dispatch-modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(15,23,42,.52); z-index:2200; }
+        .dispatch-modal.open { display:flex; }
+        .dispatch-dialog { width:min(620px,100%); background:#fff; border-radius:12px; box-shadow:0 24px 70px rgba(15,23,42,.28); overflow:hidden; }
+        .dispatch-head,.dispatch-body,.dispatch-foot { padding:18px 22px; }
+        .dispatch-head { border-bottom:1px solid #e5eef3; }
+        .dispatch-head h3 { margin:0 0 5px; color:#0f172a; }
+        .dispatch-body { display:grid; gap:11px; }
+        .dispatch-row { display:flex; justify-content:space-between; gap:18px; font-size:13px; }
+        .dispatch-row span:first-child { color:#64748b; }
+        .dispatch-warning { background:#fffbeb; border:1px solid #fde68a; color:#92400e; border-radius:7px; padding:11px; font-size:12px; }
+        .dispatch-check { display:flex; align-items:flex-start; gap:8px; color:#334155; font-size:13px; }
+        .dispatch-foot { display:flex; justify-content:flex-end; gap:9px; background:#f8fbfc; border-top:1px solid #e5eef3; }
+        .compare-modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(15,23,42,.48); z-index:2210; }
+        .compare-modal.open { display:flex; }
+        .compare-dialog { width:min(900px,96vw); background:#fff; border-radius:12px; box-shadow:0 24px 70px rgba(15,23,42,.26); overflow:hidden; }
+        .compare-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:17px 20px; border-bottom:1px solid #e5eef3; }
+        .compare-head h3 { margin:0 0 4px; color:#0f172a; }
+        .compare-close { border:0; background:transparent; color:#64748b; font-size:20px; cursor:pointer; }
+        .compare-body { padding:14px 20px 20px; overflow:auto; }
+        .compare-table { width:100%; border-collapse:collapse; min-width:650px; }
+        .compare-table th,.compare-table td { padding:11px 12px; border-bottom:1px solid #edf2f4; text-align:center; font-size:13px; }
+        .compare-table th:first-child,.compare-table td:first-child { text-align:left; color:#64748b; }
+        .compare-table thead th { background:#f8fbfc; color:#0f172a; }
+        .compare-table .recommended-column { background:#f2fbfa; }
+        .chart-card { box-shadow:none; }
+        .three-columns .chart-header span { color:#64748b; font-size:12px; }
+        .floating-ai-btn { opacity:.72; transform:scale(.88); box-shadow:0 3px 12px rgba(14,123,158,.22) !important; }
+        body > button[onclick*="process_map"] { opacity:.72 !important; padding:9px 14px !important; font-size:12px !important; box-shadow:0 3px 12px rgba(15,23,42,.16) !important; }
+        @media(max-width:1300px){.kpi-row{grid-template-columns:repeat(3,1fr)}.constraint-list{grid-template-columns:repeat(3,1fr)}}
+        @media(max-width:1100px){.selected-scenario{grid-template-columns:repeat(2,1fr)}.selected-scenario-title,.selected-scenario-action{grid-column:1/-1}.selected-metric{border-left:0;border-top:1px solid #edf2f4}}
+        @media(max-width:980px){.three-columns,.decision-grid{grid-template-columns:1fr}}
+        @media(max-width:720px){.scenario-tabs{flex-direction:column}.scenario-tab{text-align:left}.selected-scenario{grid-template-columns:1fr}.selected-scenario-title,.selected-scenario-action{grid-column:auto}.selected-metric,.selected-scenario-action{border-left:0;border-top:1px solid #edf2f4}}
+        @media(max-width:620px){.kpi-row,.constraint-list,.cost-summary{grid-template-columns:1fr}}
+    </style>
+</head>
+<body>
+<!-- 侧边栏和顶部栏由 sidebar-nav.js 自动生成 -->
+<div class="page-container">
+    <div class="page-header">
+        <h1><i class="fas fa-charging-station" style="margin-right: 12px;"></i>全厂错峰能效调度</h1>
+        <div>
+            <button class="btn btn-primary" id="optimizeBtn"><i class="fas fa-chart-line"></i> 重新优化调度</button>
+            <button class="btn btn-smart" id="smartReportBtn"><i class="fas fa-file-alt"></i> 智能报告</button>
+            <!-- 新增：语音输入按钮 -->
+            <button class="btn btn-outline" id="voiceBtn" title="语音输入"><i class="fas fa-microphone"></i></button>
+        </div>
+    </div>
+
+    <div class="upload-card">
+        <div><i class="fas fa-database"></i> 数据源：<strong id="dataSource">未上传</strong><div class="data-source-note" id="dataQualityNote">请上传包含时间、功率/电量和需水量的CSV数据</div></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap"><div class="upload-btn" id="uploadBtn"><i class="fas fa-upload"></i> 上传CSV</div><div class="upload-btn" id="downloadSampleBtn"><i class="fas fa-download"></i> 下载示例</div><input type="file" id="csvFileInput" accept=".csv" style="display:none"></div>
+    </div>
+
+    <!-- KPI卡片 -->
+    <div class="kpi-row">
+        <div class="kpi-card">
+            <div class="kpi-title"><i class="fas fa-chart-line"></i> 今日预计电费</div>
+            <div class="kpi-value no-data" id="todayCost">--</div>
+            <div class="kpi-sub">实时估算</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title"><i class="fas fa-chart-line"></i> 优化后电费
+                <span class="explain-tooltip"><i class="fas fa-question-circle"></i><span class="tooltip-text">优化后电费 = 谷时蓄水 + 峰时减少取水后的预计电费</span></span>
+            </div>
+            <div class="kpi-value saving no-data" id="optimizedCost">--</div>
+            <div class="kpi-sub saving" id="savePercent">预计节省 --%</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title"><i class="fas fa-coins"></i> 今日预计节省</div>
+            <div class="kpi-value no-data" id="monthSave">--</div>
+            <div class="kpi-sub">优化前后电费差额</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title"><i class="fas fa-chart-line"></i> 峰时负荷降低</div>
+            <div class="kpi-value no-data" id="peakReduce">--</div>
+            <div class="kpi-sub">错峰调度效果</div>
+        </div>
+        <div class="kpi-card"><div class="kpi-title"><i class="fas fa-water"></i> 最低预测水位</div><div class="kpi-value no-data" id="minWaterLevel">--</div><div class="kpi-sub">安全下限 35%</div></div>
+        <div class="kpi-card"><div class="kpi-title"><i class="fas fa-shield-alt"></i> 方案安全状态</div><div class="kpi-value no-data" id="safetyStatus">--</div><div class="kpi-sub" id="safetySubtext">等待约束校验</div></div>
+    </div>
+
+    <!-- 电价时段卡片 -->
+    <div class="price-card">
+        <div class="price-header">
+            <h3><i class="fas fa-coins"></i> 峰谷电价时段</h3>
+            <button class="btn btn-outline" id="editPriceBtn"><i class="fas fa-cog"></i> 编辑电价</button>
+        </div>
+        <div class="time-slots" id="timeSlots">
+            <div class="slot-item"><div class="slot-name slot-valley">🌙 谷时</div><div class="slot-time">23:00 - 07:00</div><div class="slot-price slot-valley" id="valleyPrice">0.32 元/kWh</div></div>
+            <div class="slot-item"><div class="slot-name slot-flat">☀️ 平时</div><div class="slot-time">07:00 - 10:00, 15:00 - 18:00, 21:00 - 23:00</div><div class="slot-price slot-flat" id="flatPrice">0.68 元/kWh</div></div>
+            <div class="slot-item"><div class="slot-name slot-peak">🔥 峰时</div><div class="slot-time">10:00 - 15:00, 18:00 - 21:00</div><div class="slot-price slot-peak" id="peakPrice">1.28 元/kWh</div></div>
+        </div>
+    </div>
+
+    <div class="scenario-switcher" id="scenarioGrid">
+        <div class="scenario-tabs" role="tablist" aria-label="调度方案">
+            <button class="scenario-tab" role="tab" aria-selected="false" data-scenario="current">当前运行方案 <small>【基准】</small></button>
+            <button class="scenario-tab" role="tab" aria-selected="true" data-scenario="balanced">综合平衡方案 <small>【推荐】</small></button>
+            <button class="scenario-tab" role="tab" aria-selected="false" data-scenario="stable">稳定运行方案 <small>【低风险】</small></button>
+        </div>
+        <div class="selected-scenario">
+            <div class="selected-scenario-title"><strong id="selectedScenarioName">综合平衡方案</strong><span id="selectedScenarioTag">推荐方案 · 图表与计划已同步</span></div>
+            <div class="selected-metric"><span>预计电费</span><strong id="selectedScenarioCost">--</strong></div>
+            <div class="selected-metric"><span>峰值负荷</span><strong id="selectedScenarioPeak">--</strong></div>
+            <div class="selected-metric"><span>最低水位</span><strong id="selectedScenarioLevel">--</strong></div>
+            <div class="selected-metric"><span>运行风险</span><strong id="selectedScenarioRisk">待评估</strong></div>
+            <div class="selected-scenario-action"><button class="btn btn-outline" id="comparePlansBtn"><i class="fas fa-columns"></i> 对比查看</button></div>
+        </div>
+    </div>
+
+    <div class="constraint-card">
+        <div><div class="chart-header" style="margin-bottom:0"><div><h3><i class="fas fa-shield-alt"></i> 方案约束校验</h3><div class="data-source-note" id="constraintSummary">等待数据</div></div></div><div class="constraint-list"><div class="constraint-item" id="supplyConstraint"><i class="fas fa-circle"></i>全天供水量</div><div class="constraint-item" id="levelConstraint"><i class="fas fa-circle"></i>最低水位≥35%</div><div class="constraint-item" id="peakConstraint"><i class="fas fa-circle"></i>峰值负荷限制</div><div class="constraint-item" id="balanceConstraint"><i class="fas fa-circle"></i>期末水量平衡</div><div class="constraint-item" id="dataConstraint"><i class="fas fa-circle"></i>数据完整度</div></div></div>
+        <div class="decision-actions"><button class="btn btn-outline" id="savePlanBtn" disabled><i class="fas fa-save"></i> 暂存方案</button><button class="btn btn-primary" id="reviewDispatchBtn" disabled><i class="fas fa-paper-plane"></i> 审核并下发</button></div>
+    </div>
+
+    <!-- 三列布局：用电负荷 + 蓄水池水位 + 需水量预测 -->
+    <div class="three-columns">
+        <div class="chart-card">
+            <div class="chart-header"><h3><i class="fas fa-chart-line"></i> 用电负荷曲线</h3><div class="chart-heading-actions"><span>当前 vs 优化后</span><button class="chart-expand-btn" type="button" data-chart="loadChart" data-title="用电负荷曲线" data-subtitle="当前负荷与所选方案优化后负荷对比" aria-label="放大用电负荷曲线" title="放大查看"><i class="fas fa-expand"></i></button></div></div>
+            <div id="loadChart" class="chart-container"></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-header"><h3><i class="fas fa-water"></i> 蓄水池水位预测</h3><div class="chart-heading-actions"><span>谷时蓄水策略</span><button class="chart-expand-btn" type="button" data-chart="waterLevelChart" data-title="蓄水池水位预测" data-subtitle="所选调度方案下的水位变化与安全下限" aria-label="放大蓄水池水位预测" title="放大查看"><i class="fas fa-expand"></i></button></div></div>
+            <div id="waterLevelChart" class="chart-container"></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-header"><h3><i class="fas fa-chart-line"></i> 需水量预测</h3>
+                <div class="chart-heading-actions"><div class="granularity-control"><span style="font-size: 11px;">粒度:</span>
+                    <button class="granularity-btn" data-granularity="coarse">粗</button>
+                    <button class="granularity-btn active" data-granularity="normal">标准</button>
+                    <button class="granularity-btn" data-granularity="fine">细</button>
+                </div><button class="chart-expand-btn" type="button" data-chart="demandChart" data-title="需水量预测" data-subtitle="基于上传 CSV 的需水量时序数据" aria-label="放大需水量预测" title="放大查看"><i class="fas fa-expand"></i></button></div>
+            </div>
+            <div id="demandChart" class="chart-container"></div>
+        </div>
+    </div>
+
+    <!-- 优化调度方案 -->
+    <div class="schedule-card">
+        <div class="chart-header"><h3><i class="fas fa-calendar-alt"></i> AI优化调度方案</h3><span>基于用水需求预测</span></div>
+        <div class="schedule-table-wrap"><table class="schedule-table"><thead><tr><th>时段</th><th>电价类型</th><th>需水预测</th><th>目标水位</th><th>建议泵组负荷</th><th>预计功率</th><th>状态</th></tr></thead><tbody id="scheduleBody"><tr><td colspan="7" class="no-data">请上传 CSV 文件</td></tr></tbody></table></div>
+    </div>
+
+    <!-- 电费对比 -->
+    <div class="chart-card">
+        <div class="chart-header"><h3><i class="fas fa-chart-bar"></i> 电费对比（当前数据周期）</h3><div class="chart-heading-actions"><span>当前方案 vs 选定方案</span><button class="chart-expand-btn" type="button" data-chart="costCompareChart" data-title="电费对比（当前数据周期）" data-subtitle="按上传数据的采样间隔和分时电价逐点计算" aria-label="放大电费对比图" title="放大查看"><i class="fas fa-expand"></i></button></div></div>
+        <div id="costCompareChart" class="chart-container" style="height:260px;"></div>
+        <div class="cost-summary"><div class="cost-summary-item"><span>当前方案电费</span><strong id="costCurrentSummary">--</strong></div><div class="cost-summary-item"><span>选定方案电费</span><strong id="costOptimizedSummary">--</strong></div><div class="cost-summary-item saving"><span>预计节省</span><strong id="costSavingSummary">--</strong></div></div>
+        <div class="calculation-note"><i class="fas fa-calculator"></i> <strong>计算方法：</strong><span id="costCalculationNote">上传数据后，将按每个采样点对应的峰、平、谷电价计算并累加。</span></div>
+    </div>
+
+</div>
+
+<!-- 图表放大查看 -->
+<div class="chart-modal" id="energyChartModal" role="dialog" aria-modal="true" aria-labelledby="expandedEnergyChartTitle">
+    <div class="chart-modal-dialog">
+        <div class="chart-modal-head"><div><h3 id="expandedEnergyChartTitle">图表详情</h3><div class="chart-modal-subtitle" id="expandedEnergyChartSubtitle"></div></div><button class="chart-modal-close" id="closeEnergyChartModal" type="button" aria-label="关闭放大图表"><i class="fas fa-times"></i></button></div>
+        <div class="chart-modal-body"><div id="expandedEnergyChart"></div></div>
+    </div>
+</div>
+
+<!-- 智能报告弹窗 -->
+<div id="reportModal" class="report-modal"><div class="report-card"><div class="report-header"><h3><i class="fas fa-chart-line"></i> 能效调度报告</h3><button class="report-close" id="closeReportModal"><i class="fas fa-times"></i></button></div>
+<div class="report-content" id="reportContent"></div><div class="report-footer"><button class="report-btn" id="copyReportBtn"><i class="fas fa-copy"></i> 复制报告</button>
+<button class="report-btn report-btn-primary" id="exportPdfBtn"><i class="fas fa-file-pdf"></i> 导出 PDF</button></div></div></div>
+
+<div class="compare-modal" id="compareModal" role="dialog" aria-modal="true" aria-labelledby="compareTitle"><div class="compare-dialog"><div class="compare-head"><div><h3 id="compareTitle"><i class="fas fa-columns" style="color:#0f8b9e"></i> 三套调度方案对比</h3><div class="data-source-note">相同数据、时间范围和安全约束下的横向比较</div></div><button class="compare-close" id="closeCompareModal" aria-label="关闭"><i class="fas fa-times"></i></button></div><div class="compare-body"><table class="compare-table"><thead><tr><th>核心指标</th><th>当前运行方案【基准】</th><th class="recommended-column">综合平衡方案【推荐】</th><th>稳定运行方案【低风险】</th></tr></thead><tbody><tr><td>预计电费</td><td id="currentScenarioCost">--</td><td class="recommended-column" id="balancedScenarioCost">--</td><td id="stableScenarioCost">--</td></tr><tr><td>峰值负荷</td><td id="currentScenarioPeak">--</td><td class="recommended-column" id="balancedScenarioPeak">--</td><td id="stableScenarioPeak">--</td></tr><tr><td>最低水位</td><td id="currentScenarioLevel">--</td><td class="recommended-column" id="balancedScenarioLevel">--</td><td id="stableScenarioLevel">--</td></tr><tr><td>运行风险</td><td id="currentScenarioRisk">待评估</td><td class="recommended-column" id="balancedScenarioRisk">待评估</td><td id="stableScenarioRisk">待评估</td></tr></tbody></table></div></div></div>
+
+<div class="dispatch-modal" id="dispatchModal" role="dialog" aria-modal="true" aria-labelledby="dispatchTitle"><div class="dispatch-dialog"><div class="dispatch-head"><h3 id="dispatchTitle"><i class="fas fa-shield-alt" style="color:#0f8b9e"></i> 确认下发能效调度方案</h3><div class="data-source-note">下发前请核对方案结果和全部安全约束。</div></div><div class="dispatch-body"><div class="dispatch-row"><span>选定方案</span><strong id="dispatchScenario">--</strong></div><div class="dispatch-row"><span>预计电费</span><strong id="dispatchCost">--</strong></div><div class="dispatch-row"><span>预计节省</span><strong id="dispatchSaving">--</strong></div><div class="dispatch-row"><span>最低预测水位</span><strong id="dispatchLevel">--</strong></div><div class="dispatch-row"><span>约束校验</span><strong id="dispatchSafety">--</strong></div><div class="dispatch-warning"><i class="fas fa-exclamation-triangle"></i> 下发后系统进入执行监控。若实际水位、供水量或设备状态偏离安全范围，系统应暂停计划并恢复原调度。</div><label class="dispatch-check"><input type="checkbox" id="dispatchAcknowledgement"> <span>我已核对数据来源、调度方案和安全约束，同意下发。</span></label></div><div class="dispatch-foot"><button class="btn btn-outline" id="cancelDispatchBtn">取消</button><button class="btn btn-primary" id="confirmDispatchBtn" disabled><i class="fas fa-paper-plane"></i> 确认下发</button></div></div></div>
+
+<script>
+let csvData = [], columnMap = {}, hasData = false, currentGranularity = 'normal';
+let loadChart, waterLevelChart, costCompareChart, demandChart;
+let expandedEnergyChart = null;
+let selectedScenario = 'balanced';
+let latestCalculation = null;
+
+let priceConfig = { valley: { price: 0.32 }, flat: { price: 0.68 }, peak: { price: 1.28 } };
+
+function showSuccessToast(msg) { const t = document.createElement('div'); t.className = 'success-toast'; t.innerHTML = `<i class="fas fa-check-circle"></i> ${msg}`; document.body.appendChild(t); setTimeout(() => t.remove(), 3000); }
+
+function initCharts() {
+    loadChart = echarts.init(document.getElementById('loadChart'));
+    waterLevelChart = echarts.init(document.getElementById('waterLevelChart'));
+    costCompareChart = echarts.init(document.getElementById('costCompareChart'));
+    demandChart = echarts.init(document.getElementById('demandChart'));
+    [loadChart, waterLevelChart, costCompareChart, demandChart].forEach(chart => chart.setOption({ title: { text: '请上传 CSV 文件', left: 'center', top: 'middle', textStyle: { color: '#64748b', fontSize: 14 } }, xAxis: { show: false }, yAxis: { show: false }, series: [] }));
+}
+
+function getPowerData(data) {
+    if (!data || data.length === 0) return [];
+    if (!columnMap.power) return [];
+    return data.slice(-24).map(row => Number.parseFloat(row[columnMap.power])).map(value => Number.isFinite(value) ? value : null);
+}
+
+function initChartExpand() {
+    const chartMap = { loadChart: () => loadChart, waterLevelChart: () => waterLevelChart, demandChart: () => demandChart, costCompareChart: () => costCompareChart };
+    const modal = document.getElementById('energyChartModal');
+    const closeModal = () => {
+        modal.classList.remove('open');
+        if (expandedEnergyChart) { expandedEnergyChart.dispose(); expandedEnergyChart = null; }
+    };
+    document.querySelectorAll('.chart-expand-btn').forEach(button => button.addEventListener('click', () => {
+        const sourceChart = chartMap[button.dataset.chart]?.();
+        if (!sourceChart) return;
+        document.getElementById('expandedEnergyChartTitle').textContent = button.dataset.title || '图表详情';
+        document.getElementById('expandedEnergyChartSubtitle').textContent = button.dataset.subtitle || '';
+        modal.classList.add('open');
+        if (expandedEnergyChart) expandedEnergyChart.dispose();
+        expandedEnergyChart = echarts.init(document.getElementById('expandedEnergyChart'));
+        expandedEnergyChart.setOption(sourceChart.getOption(), true);
+        requestAnimationFrame(() => expandedEnergyChart?.resize());
+    }));
+    document.getElementById('closeEnergyChartModal').addEventListener('click', closeModal);
+    modal.addEventListener('click', event => { if (event.target === modal) closeModal(); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && modal.classList.contains('open')) closeModal(); });
+}
+
+// 修改：需水量预测数据从CSV读取
+function getDemandData(data) {
+    if (!data || data.length === 0) return [];
+    // 检测需水量列（支持多种列名）
+    const demandCol = columnMap.demand || 
+                      Object.keys(data[0] || {}).find(k => /需水|demand|water.*need|consumption/i.test(k));
+    if (demandCol) {
+        // 有真实数据，返回最近24个点
+        return data.slice(-24).map(row => parseFloat(row[demandCol]) || 0);
+    }
+    return [];
+}
+
+function getTimeContext(data, count) {
+    const rows = data.slice(-count);
+    const timestamps = rows.map((row, index) => {
+        const raw = columnMap.timestamp ? row[columnMap.timestamp] : null;
+        const parsed = raw ? new Date(String(raw).replace(/-/g, '/')) : null;
+        return parsed && !Number.isNaN(parsed.getTime()) ? parsed : null;
+    });
+    const validDiffs = [];
+    for (let i = 1; i < timestamps.length; i++) if (timestamps[i] && timestamps[i - 1]) {
+        const hours = (timestamps[i] - timestamps[i - 1]) / 3600000;
+        if (hours > 0 && hours <= 24) validDiffs.push(hours);
+    }
+    validDiffs.sort((a,b) => a-b);
+    const intervalHours = validDiffs.length ? validDiffs[Math.floor(validDiffs.length / 2)] : 1;
+    const hours = timestamps.map((time, index) => time ? time.getHours() + time.getMinutes() / 60 : index % 24);
+    const labels = timestamps.map((time, index) => time ? time.toLocaleTimeString('zh-CN', { hour:'2-digit', minute:'2-digit', hour12:false }) : `记录${index + 1}`);
+    return { hours, labels, intervalHours, hasRealTime: timestamps.every(Boolean) };
+}
+
+function getPriceByHour(hour) {
+    if (hour >= 23 || hour < 7) return priceConfig.valley.price;
+    if ((hour >= 10 && hour < 15) || (hour >= 18 && hour < 21)) return priceConfig.peak.price;
+    return priceConfig.flat.price;
+}
+
+function calculateCost(powerData, timeContext) {
+    let cost = 0;
+    const header = columnMap.power || '';
+    const valuesAreEnergy = /kwh|电量/i.test(header);
+    for (let i = 0; i < powerData.length; i++) {
+        if (!Number.isFinite(powerData[i])) continue;
+        const energy = valuesAreEnergy ? powerData[i] : powerData[i] * timeContext.intervalHours;
+        cost += energy * getPriceByHour(timeContext.hours[i]);
+    }
+    return Number(cost.toFixed(2));
+}
+
+function optimizeLoad(powerData, timeContext, scenario) {
+    if (scenario === 'current') return powerData.slice();
+    const reduction = scenario === 'stable' ? .10 : .18;
+    const optimized = powerData.map(value => Number.isFinite(value) ? value : 0);
+    let shiftedEnergy = 0;
+    const valleyIndexes = [];
+    optimized.forEach((value, index) => {
+        const hour = timeContext.hours[index];
+        const isPeak = (hour >= 10 && hour < 15) || (hour >= 18 && hour < 21);
+        const isValley = hour >= 23 || hour < 7;
+        if (isPeak) { const shift = value * reduction; optimized[index] -= shift; shiftedEnergy += shift; }
+        if (isValley) valleyIndexes.push(index);
+    });
+    if (valleyIndexes.length) {
+        const addition = shiftedEnergy / valleyIndexes.length;
+        valleyIndexes.forEach(index => { optimized[index] += addition; });
+    }
+    return optimized.map(value => Number(value.toFixed(2)));
+}
+
+function calculateWaterLevel(optimizedData, demandData, intervalHours) {
+    if (!optimizedData.length || !demandData.length || optimizedData.length !== demandData.length) return [];
+    const capacity = 10000;
+    const totalDemand = demandData.reduce((sum,value) => sum + Math.max(0,value) * intervalHours, 0);
+    const totalLoad = optimizedData.reduce((sum,value) => sum + Math.max(0,value), 0) || 1;
+    const supplyPerLoad = totalDemand / (totalLoad * intervalHours || 1);
+    let storage = capacity * .60;
+    return optimizedData.map((load,index) => {
+        const supply = Math.max(0,load) * supplyPerLoad;
+        storage += (supply - Math.max(0,demandData[index])) * intervalHours;
+        storage = Math.max(0, Math.min(capacity, storage));
+        return Number((storage / capacity * 100).toFixed(1));
+    });
+}
+
+function updateAll() {
+    if (!hasData || csvData.length === 0) { showNoData(); return; }
+    const powerData = getPowerData(csvData);
+    const demandData = getDemandData(csvData);
+    const usablePower = powerData.filter(Number.isFinite);
+    if (!columnMap.power || !usablePower.length) {
+        showNoData();
+        document.getElementById('dataQualityNote').textContent = '缺少功率/电量字段，无法进行可信的能效计算';
+        return;
+    }
+    if (!demandData.length) {
+        showNoData();
+        document.getElementById('dataQualityNote').textContent = '缺少需水量字段，无法校验供水量和水池水位约束';
+        return;
+    }
+    const count = Math.min(powerData.length, demandData.length);
+    const cleanPower = powerData.slice(-count).map(value => Number.isFinite(value) ? value : 0);
+    const cleanDemand = demandData.slice(-count).map(value => Number.isFinite(value) ? value : 0);
+    const timeContext = getTimeContext(csvData, count);
+    const currentCost = calculateCost(cleanPower, timeContext);
+    const buildScenario = scenario => {
+        const optimizedData = optimizeLoad(cleanPower, timeContext, scenario);
+        const cost = calculateCost(optimizedData, timeContext);
+        const waterLevel = calculateWaterLevel(optimizedData, cleanDemand, timeContext.intervalHours);
+        const peakIndexes = timeContext.hours.map((hour,index) => ({hour,index})).filter(item => (item.hour >= 10 && item.hour < 15) || (item.hour >= 18 && item.hour < 21)).map(item => item.index);
+        const currentPeak = Math.max(...(peakIndexes.length ? peakIndexes.map(index => cleanPower[index]) : cleanPower));
+        const optimizedPeak = Math.max(...(peakIndexes.length ? peakIndexes.map(index => optimizedData[index]) : optimizedData));
+        const peakReduce = currentPeak > 0 ? (currentPeak - optimizedPeak) / currentPeak * 100 : 0;
+        const minLevel = waterLevel.length ? Math.min(...waterLevel) : 0;
+        const totalBefore = cleanPower.reduce((a,b) => a+b,0);
+        const totalAfter = optimizedData.reduce((a,b) => a+b,0);
+        const constraints = { supply: cleanDemand.every(value => value >= 0), level: minLevel >= 35, peak: optimizedPeak <= currentPeak, balance: Math.abs(totalAfter-totalBefore) <= Math.max(1,totalBefore*.01), data: timeContext.hasRealTime && cleanPower.every(Number.isFinite) && cleanDemand.every(Number.isFinite) };
+        return { scenario, optimizedData, cost, waterLevel, peakReduce, optimizedPeak, minLevel, constraints, safe: Object.values(constraints).every(Boolean) };
+    };
+    const scenarios = { current: buildScenario('current'), balanced: buildScenario('balanced'), stable: buildScenario('stable') };
+    const result = scenarios[selectedScenario];
+    const saveAmount = currentCost - result.cost;
+    const savePercent = currentCost > 0 ? saveAmount / currentCost * 100 : 0;
+    latestCalculation = { powerData:cleanPower, demandData:cleanDemand, timeContext, currentCost, scenarios, result, saveAmount, savePercent };
+
+    document.getElementById('todayCost').innerHTML = currentCost.toFixed(2) + '<span class="kpi-unit">元</span>';
+    document.getElementById('optimizedCost').innerHTML = result.cost.toFixed(2) + '<span class="kpi-unit">元</span>';
+    document.getElementById('savePercent').textContent = `预计节省 ${savePercent.toFixed(1)}%`;
+    document.getElementById('monthSave').innerHTML = Math.max(0,saveAmount).toFixed(2) + '<span class="kpi-unit">元</span>';
+    document.getElementById('peakReduce').innerHTML = result.peakReduce.toFixed(1) + '<span class="kpi-unit">%</span>';
+    document.getElementById('minWaterLevel').innerHTML = result.minLevel.toFixed(1) + '<span class="kpi-unit">%</span>';
+    document.getElementById('safetyStatus').innerHTML = result.safe ? '<span style="color:#15803d;font-size:20px">全部通过</span>' : '<span style="color:#b91c1c;font-size:20px">存在风险</span>';
+    document.getElementById('safetySubtext').textContent = result.safe ? '允许提交人工审核' : '禁止下发，请调整约束';
+    document.getElementById('dataQualityNote').textContent = `${csvData.length}条记录 · 采样间隔${timeContext.intervalHours.toFixed(2)}小时 · ${timeContext.hasRealTime ? '时间戳完整' : '部分时间为序号推定'} · 功率字段：${columnMap.power}`;
+    ['todayCost','optimizedCost','monthSave','peakReduce','minWaterLevel','safetyStatus'].forEach(id => document.getElementById(id)?.classList.remove('no-data'));
+    document.getElementById('savePlanBtn').disabled = false;
+    document.getElementById('reviewDispatchBtn').disabled = !result.safe;
+    updateScenarioCards(currentCost, scenarios);
+    updateConstraints(result.constraints);
+
+    updateCharts(cleanPower, result.optimizedData, cleanDemand, currentCost, result.cost, savePercent, result.waterLevel, timeContext);
+    updateSchedule(result, cleanDemand, timeContext);
+}
+
+function updateScenarioCards(currentCost, scenarios) {
+    const set = (prefix, scenario) => {
+        document.getElementById(`${prefix}ScenarioCost`).textContent = `${scenario.cost.toFixed(2)}元`;
+        document.getElementById(`${prefix}ScenarioPeak`).textContent = `${scenario.optimizedPeak.toFixed(1)}kW`;
+        document.getElementById(`${prefix}ScenarioLevel`).textContent = `${scenario.minLevel.toFixed(1)}%`;
+        document.getElementById(`${prefix}ScenarioRisk`).textContent = scenario.safe ? '低' : '需调整';
+    };
+    set('current', scenarios.current); set('balanced', scenarios.balanced); set('stable', scenarios.stable);
+    const names={current:'当前运行方案',balanced:'综合平衡方案',stable:'稳定运行方案'};
+    const tags={current:'基准方案',balanced:'推荐方案',stable:'低风险方案'};
+    const selected=scenarios[selectedScenario];
+    document.getElementById('selectedScenarioName').textContent=names[selectedScenario];
+    document.getElementById('selectedScenarioTag').textContent=`${tags[selectedScenario]} · 图表与计划已同步`;
+    document.getElementById('selectedScenarioCost').textContent=`${selected.cost.toFixed(2)}元`;
+    document.getElementById('selectedScenarioPeak').textContent=`${selected.optimizedPeak.toFixed(1)}kW`;
+    document.getElementById('selectedScenarioLevel').textContent=`${selected.minLevel.toFixed(1)}%`;
+    document.getElementById('selectedScenarioRisk').textContent=selected.safe?'低':'需调整';
+    document.querySelectorAll('.scenario-tab').forEach(tab => tab.setAttribute('aria-selected', tab.dataset.scenario === selectedScenario ? 'true' : 'false'));
+}
+
+function updateConstraints(constraints) {
+    const mapping = { supply:'supplyConstraint', level:'levelConstraint', peak:'peakConstraint', balance:'balanceConstraint', data:'dataConstraint' };
+    Object.entries(mapping).forEach(([key,id]) => { const node=document.getElementById(id); node.classList.toggle('failed',!constraints[key]); node.querySelector('i').className=`fas ${constraints[key]?'fa-check-circle':'fa-times-circle'}`; });
+    const passed = Object.values(constraints).filter(Boolean).length;
+    document.getElementById('constraintSummary').textContent = `${passed}/5项通过；所有强制约束通过后才允许提交审核`;
+}
+
+function getDemandChartView(demandData, labels, granularity) {
+    const targetPoints = granularity === 'coarse' ? 6 : (granularity === 'normal' ? 12 : demandData.length);
+    if (demandData.length <= targetPoints || granularity === 'fine') return { data: demandData.slice(), labels: labels.slice() };
+    const groupSize = Math.ceil(demandData.length / targetPoints);
+    const view = { data: [], labels: [] };
+    for (let start = 0; start < demandData.length; start += groupSize) {
+        const values = demandData.slice(start, start + groupSize).filter(Number.isFinite);
+        if (!values.length) continue;
+        const end = Math.min(start + groupSize - 1, labels.length - 1);
+        view.data.push(Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2)));
+        view.labels.push(start === end ? labels[start] : `${labels[start]}–${labels[end]}`);
+    }
+    return view;
+}
+
+function updateDemandChart(demandData, labels) {
+    const view = getDemandChartView(demandData, labels, currentGranularity);
+    demandChart.setOption({
+        title: { show: false },
+        tooltip: { trigger: 'axis', valueFormatter: value => `${Number(value).toFixed(2)} m³/h` },
+        grid: { left: 58, right: 24, top: 36, bottom: 54 },
+        xAxis: { type: 'category', data: view.labels, boundaryGap: false, axisLabel: { rotate: 38, color: '#64748b', hideOverlap: true } },
+        yAxis: { type: 'value', name: '需水量 (m³/h)', scale: true, nameTextStyle: { color: '#64748b' }, splitLine: { lineStyle: { color: '#edf2f4' } } },
+        series: [{ name: 'CSV需水量', type: 'line', data: view.data, smooth: 0.25, symbolSize: 7, lineStyle: { color: '#f59e0b', width: 2.5 }, itemStyle: { color: '#fff', borderColor: '#f59e0b', borderWidth: 2 }, areaStyle: { color: 'rgba(245,158,11,.14)' } }]
+    }, true);
+}
+
+function updateCharts(powerData, optimizedData, demandData, currentCost, optimizedCost, savePercent, waterLevel, timeContext) {
+    const hours = timeContext.labels;
+    loadChart.setOption({ title: { show: false }, grid: { left: 62, right: 24, top: 42, bottom: 54, containLabel: false }, tooltip: { trigger: 'axis', valueFormatter: value => `${Number(value).toFixed(1)} kW` }, legend: { data: ['当前负荷', '优化后负荷'], textStyle: { color: '#64748b' } }, xAxis: { show: true, type: 'category', data: hours, boundaryGap: false, axisLabel: { rotate: 45, color: '#64748b' } }, yAxis: { show: true, type: 'value', name: '负荷（kW）', nameLocation: 'end', nameGap: 14, scale: true, splitNumber: 5, nameTextStyle: { color: '#475569', fontSize: 12, padding: [0, 0, 0, 4] }, axisLabel: { show: true, color: '#64748b', formatter: value => Number(value).toFixed(0) }, axisLine: { show: true, lineStyle: { color: '#94a3b8' } }, axisTick: { show: true }, splitLine: { show: true, lineStyle: { color: '#e8eef2', type: 'dashed' } } }, series: [{ name: '当前负荷', type: 'line', data: powerData.slice(0,24), lineStyle: { color: '#ff6b6b', width: 2 } }, { name: '优化后负荷', type: 'line', data: optimizedData.slice(0,24), lineStyle: { color: '#6fcf97', width: 2 } }] }, true);
+    waterLevelChart.setOption({ title: { show: false }, grid: { left: 62, right: 52, top: 42, bottom: 54, containLabel: false }, tooltip: { trigger: 'axis', valueFormatter: value => `${Number(value).toFixed(1)}%` }, xAxis: { show: true, type: 'category', data: hours, boundaryGap: false, axisLabel: { rotate: 45, color: '#64748b' } }, yAxis: { show: true, type: 'value', name: '水位（%）', nameLocation: 'end', nameGap: 14, min: 0, max: 100, interval: 20, nameTextStyle: { color: '#475569', fontSize: 12, padding: [0, 0, 0, 4] }, axisLabel: { show: true, color: '#64748b', formatter: '{value}%' }, axisLine: { show: true, lineStyle: { color: '#94a3b8' } }, axisTick: { show: true }, splitLine: { show: true, lineStyle: { color: '#e8eef2', type: 'dashed' } } }, series: [{ name: '预测水位', type: 'line', data: waterLevel, smooth: true, lineStyle: { color: '#0f8b9e', width: 2 }, areaStyle: { opacity: 0.2 }, markLine:{silent:true,symbol:'none',lineStyle:{color:'#ef4444',type:'dashed'},label:{formatter:'安全下限 35%'},data:[{yAxis:35}]}}] }, true);
+    
+    updateDemandChart(demandData, hours);
+    
+    const saving = currentCost - optimizedCost;
+    const savingText = saving >= 0 ? `${saving.toFixed(2)} 元（${savePercent.toFixed(1)}%）` : `增加 ${Math.abs(saving).toFixed(2)} 元（${Math.abs(savePercent).toFixed(1)}%）`;
+    costCompareChart.setOption({
+        title: { show: false },
+        grid: { left: 68, right: 30, top: 48, bottom: 44 },
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: value => `${Number(value).toFixed(2)} 元` },
+        legend: { data: ['当前方案', '选定方案'], top: 2, textStyle: { color: '#64748b' } },
+        xAxis: { type: 'category', data: ['当前数据周期'], axisTick: { show: false }, axisLabel: { color: '#64748b' } },
+        yAxis: { type: 'value', name: '电费（元）', min: 0, nameGap: 16, nameTextStyle: { color: '#475569' }, axisLabel: { color: '#64748b', formatter: value => `¥${Number(value).toFixed(0)}` }, axisLine: { show: true, lineStyle: { color: '#94a3b8' } }, splitLine: { lineStyle: { color: '#e8eef2', type: 'dashed' } } },
+        series: [{ type: 'bar', name: '当前方案', data: [currentCost], barMaxWidth: 180, label: { show: true, position: 'top', formatter: params => `¥${Number(params.value).toFixed(2)}`, color: '#334155', fontWeight: 600 }, itemStyle: { color: '#ff6b6b', borderRadius: [7,7,0,0] } }, { type: 'bar', name: '选定方案', data: [optimizedCost], barMaxWidth: 180, label: { show: true, position: 'top', formatter: params => `¥${Number(params.value).toFixed(2)}`, color: '#166534', fontWeight: 600 }, itemStyle: { color: '#6fcf97', borderRadius: [7,7,0,0] } }]
+    }, true);
+    document.getElementById('costCurrentSummary').textContent = `${currentCost.toFixed(2)} 元`;
+    document.getElementById('costOptimizedSummary').textContent = `${optimizedCost.toFixed(2)} 元`;
+    document.getElementById('costSavingSummary').textContent = savingText;
+    const valuesAreEnergy = /kwh|电量/i.test(columnMap.power || '');
+    const rates = `谷 ${priceConfig.valley.price.toFixed(2)}、平 ${priceConfig.flat.price.toFixed(2)}、峰 ${priceConfig.peak.price.toFixed(2)} 元/kWh`;
+    document.getElementById('costCalculationNote').textContent = valuesAreEnergy
+        ? `电费 = Σ［每条电量(kWh) × 该时刻分时电价］；电价：${rates}。`
+        : `电费 = Σ［每条功率(kW) × 采样间隔(${timeContext.intervalHours.toFixed(2)}小时) × 该时刻分时电价］；电价：${rates}。`;
+}
+
+function updateSchedule(result, demandData, timeContext) {
+    const rows = result.optimizedData.map((power,index) => {
+        const hour = timeContext.hours[index];
+        const type = hour >= 23 || hour < 7 ? ['谷时','slot-valley'] : (((hour >= 10 && hour < 15) || (hour >= 18 && hour < 21)) ? ['峰时','slot-peak'] : ['平时','slot-flat']);
+        const level = result.waterLevel[index];
+        const action = type[0] === '谷时' ? '蓄水运行' : (type[0] === '峰时' ? '错峰降载' : '按需供水');
+        return `<tr><td>${timeContext.labels[index]}</td><td class="${type[1]}">${type[0]} ${getPriceByHour(hour).toFixed(2)}元/kWh</td><td>${demandData[index].toFixed(1)} m³/h</td><td>${level.toFixed(1)}%</td><td>${action}</td><td>${power.toFixed(1)} kW</td><td><span class="status-chip">待审核</span></td></tr>`;
+    });
+    document.getElementById('scheduleBody').innerHTML = rows.join('');
+}
+
+// 修改：智能报告数据动态化 - 从CSV实时计算
+function showSmartReport() {
+    if (!hasData || !latestCalculation) { alert('❌ 请先上传包含时间、功率/电量和需水量的数据'); return; }
+    const currentCost = latestCalculation.currentCost;
+    const optimizedCost = latestCalculation.result.cost;
+    const savePercent = latestCalculation.savePercent.toFixed(1);
+    const saveAmount = latestCalculation.saveAmount;
+    const monthSave = Math.round(saveAmount * 30);
+    const firstTime = csvData[0]?.[columnMap.timestamp] || '--';
+    const lastTime = csvData[csvData.length - 1]?.[columnMap.timestamp] || '--';
+    
+    const reportHtml = `<div class="report-section"><div class="report-section-title"><i class="fas fa-chart-line"></i> 📊 数据概览</div><div class="report-data-row"><span class="report-data-label">数据条数</span><span class="report-data-value">${csvData.length} 条</span></div><div class="report-data-row"><span class="report-data-label">时间范围</span><span class="report-data-value">${firstTime} 至 ${lastTime}</span></div></div><div class="report-section"><div class="report-section-title"><i class="fas fa-charging-station"></i> ⚡ 能效分析</div><div class="report-data-row"><span class="report-data-label">今日预计电费</span><span class="report-data-value">${currentCost} 元</span></div><div class="report-data-row"><span class="report-data-label">优化后电费</span><span class="report-data-value highlight">${optimizedCost} 元</span></div><div class="report-data-row"><span class="report-data-label">预计节省金额</span><span class="report-data-value highlight">${saveAmount} 元 (${savePercent}%)</span></div><div class="report-data-row"><span class="report-data-label">本月预计节省</span><span class="report-data-value">${monthSave} 元</span></div></div><div class="report-section"><div class="report-section-title"><i class="fas fa-coins"></i> 💰 电价信息</div><div class="report-data-row"><span class="report-data-label">谷时电价</span><span class="report-data-value">${priceConfig.valley.price} 元/kWh</span></div><div class="report-data-row"><span class="report-data-label">平时电价</span><span class="report-data-value">${priceConfig.flat.price} 元/kWh</span></div><div class="report-data-row"><span class="report-data-label">峰时电价</span><span class="report-data-value">${priceConfig.peak.price} 元/kWh</span></div></div><div class="report-section"><div class="report-section-title"><i class="fas fa-brain"></i> 💡 AI 建议</div><div class="report-data-row"><span class="report-data-label">${savePercent > 15 ? '✅ 建议增加谷时蓄水比例，进一步降低电费' : '⚠️ 电价较高时段，建议优化调度策略'}</span></div></div><div class="report-section"><div class="report-section-title"><i class="fas fa-calendar-alt"></i> 📅 报告信息</div><div class="report-data-row"><span class="report-data-label">生成时间</span><span class="report-data-value">${new Date().toLocaleString('zh-CN')}</span></div></div>`;
+    document.getElementById('reportContent').innerHTML = reportHtml;
+    document.getElementById('reportModal').style.display = 'flex';
+}
+
+function showNoData() {
+    latestCalculation = null;
+    ['todayCost', 'optimizedCost', 'monthSave', 'peakReduce','minWaterLevel','safetyStatus'].forEach(id => { const el = document.getElementById(id); if(el) { el.innerHTML = '<span class="no-data">--</span>'; el.classList.add('no-data'); } });
+    document.getElementById('savePercent').innerHTML = '预计节省 --%';
+    document.getElementById('safetySubtext').textContent = '等待约束校验';
+    document.getElementById('scheduleBody').innerHTML = '<tr><td colspan="7" class="no-data">请上传 CSV 文件</td></tr>';
+    document.getElementById('savePlanBtn').disabled = true;
+    document.getElementById('reviewDispatchBtn').disabled = true;
+    document.getElementById('constraintSummary').textContent = '等待数据';
+    ['costCurrentSummary','costOptimizedSummary','costSavingSummary'].forEach(id => { const node = document.getElementById(id); if (node) node.textContent = '--'; });
+    const calculationNote = document.getElementById('costCalculationNote');
+    if (calculationNote) calculationNote.textContent = '上传数据后，将按每个采样点对应的峰、平、谷电价计算并累加。';
+}
+
+function loadFromStorage() {
+    if (!window.AquaMindData || !window.AquaMindData.hasData()) { showNoData(); return false; }
+    csvData = window.AquaMindData.getData(); const meta = window.AquaMindData.getMeta();
+    columnMap = window.AquaMindData.detectColumns(Object.keys(csvData[0])); hasData = true;
+    // 检测需水量列
+    const demandCol = Object.keys(csvData[0] || {}).find(k => /需水|demand|water.*need|consumption/i.test(k));
+    const powerCol = Object.keys(csvData[0] || {}).find(k => /功率|能耗|电量|energy|power|用电/i.test(k));
+    if (demandCol) columnMap.demand = demandCol;
+    if (powerCol) columnMap.power = powerCol;
+    if (meta) document.getElementById('dataSource').textContent = meta.fileName;
+    updateAll(); return true;
+}
+
+function handleUpload(file) {
+    if (!file) return;
+    window.AquaMindData.parseCSV(file, function(result) {
+        csvData = result.data; columnMap = result.columnMap; hasData = true;
+        // 检测需水量列
+        const demandCol = Object.keys(csvData[0] || {}).find(k => /需水|demand|water.*need|consumption/i.test(k));
+        const powerCol = Object.keys(csvData[0] || {}).find(k => /功率|能耗|电量|energy|power|用电/i.test(k));
+        if (demandCol) columnMap.demand = demandCol;
+        if (powerCol) columnMap.power = powerCol;
+        document.getElementById('dataSource').textContent = result.fileName;
+        updateAll();
+        alert(`✅ 已上传 ${result.fileName}\n共 ${result.recordCount} 条数据\n🔄 所有板块已同步更新`);
+    }, function(error) { alert('❌ ' + error); });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    try { initCharts(); initChartExpand(); showNoData(); } catch(error) { console.error('能效调度初始化失败：',error); }
+    document.getElementById('uploadBtn').addEventListener('click', () => document.getElementById('csvFileInput').click());
+    document.getElementById('csvFileInput').addEventListener('change', e => { handleUpload(e.target.files[0]); e.target.value = ''; });
+    document.getElementById('optimizeBtn').addEventListener('click', () => { if (!hasData) alert('❌ 请先上传 CSV 文件'); else { updateAll(); showSuccessToast('调度方案已重新优化'); } });
+    document.getElementById('editPriceBtn').addEventListener('click', () => {
+        const newValley = prompt('谷时电价:', priceConfig.valley.price), newFlat = prompt('平时电价:', priceConfig.flat.price), newPeak = prompt('峰时电价:', priceConfig.peak.price);
+        const values = [Number.parseFloat(newValley),Number.parseFloat(newFlat),Number.parseFloat(newPeak)];
+        if (values.some(value => !Number.isFinite(value) || value < 0)) { alert('❌ 电价必须为大于或等于0的有效数字'); return; }
+        if (!(values[0] <= values[1] && values[1] <= values[2])) { alert('❌ 电价应满足：谷时 ≤ 平时 ≤ 峰时'); return; }
+        [priceConfig.valley.price,priceConfig.flat.price,priceConfig.peak.price] = values;
+        document.getElementById('valleyPrice').textContent = priceConfig.valley.price.toFixed(2) + ' 元/kWh';
+        document.getElementById('flatPrice').textContent = priceConfig.flat.price.toFixed(2) + ' 元/kWh';
+        document.getElementById('peakPrice').textContent = priceConfig.peak.price.toFixed(2) + ' 元/kWh';
+        if (hasData) updateAll();
+        alert('✅ 电价已更新');
+    });
+    document.querySelectorAll('.scenario-tab').forEach(card => card.addEventListener('click', function() {
+        selectedScenario = this.dataset.scenario;
+        document.querySelectorAll('.scenario-tab').forEach(tab => tab.setAttribute('aria-selected', tab.dataset.scenario === selectedScenario ? 'true' : 'false'));
+        const names={current:'当前运行方案',balanced:'综合平衡方案',stable:'稳定运行方案'};
+        const tags={current:'基准方案',balanced:'推荐方案',stable:'低风险方案'};
+        document.getElementById('selectedScenarioName').textContent=names[selectedScenario];
+        document.getElementById('selectedScenarioTag').textContent=hasData?`${tags[selectedScenario]} · 图表与计划已同步`:`${tags[selectedScenario]} · 等待数据`;
+        if (hasData) updateAll();
+    }));
+    document.getElementById('comparePlansBtn').addEventListener('click',function(){
+        if(!latestCalculation){alert('❌ 请先上传数据并完成方案计算');return;}
+        document.getElementById('compareModal').classList.add('open');
+    });
+    document.getElementById('closeCompareModal').addEventListener('click',()=>document.getElementById('compareModal').classList.remove('open'));
+    document.getElementById('compareModal').addEventListener('click',function(event){if(event.target===this)this.classList.remove('open');});
+    document.getElementById('savePlanBtn').addEventListener('click', function() { if (latestCalculation) showSuccessToast('调度方案已暂存，尚未下发'); });
+    document.getElementById('reviewDispatchBtn').addEventListener('click', function() {
+        if (!latestCalculation || !latestCalculation.result.safe) return;
+        const names={current:'当前运行方案',balanced:'综合平衡方案',stable:'稳定运行方案'};
+        document.getElementById('dispatchScenario').textContent=names[selectedScenario];
+        document.getElementById('dispatchCost').textContent=`${latestCalculation.result.cost.toFixed(2)}元`;
+        document.getElementById('dispatchSaving').textContent=`${Math.max(0,latestCalculation.saveAmount).toFixed(2)}元（${latestCalculation.savePercent.toFixed(1)}%）`;
+        document.getElementById('dispatchLevel').textContent=`${latestCalculation.result.minLevel.toFixed(1)}%`;
+        document.getElementById('dispatchSafety').textContent='5/5项通过';
+        document.getElementById('dispatchAcknowledgement').checked=false;
+        document.getElementById('confirmDispatchBtn').disabled=true;
+        document.getElementById('dispatchModal').classList.add('open');
+    });
+    document.getElementById('dispatchAcknowledgement').addEventListener('change',function(){document.getElementById('confirmDispatchBtn').disabled=!this.checked;});
+    document.getElementById('cancelDispatchBtn').addEventListener('click',()=>document.getElementById('dispatchModal').classList.remove('open'));
+    document.getElementById('dispatchModal').addEventListener('click',function(event){if(event.target===this)this.classList.remove('open');});
+    document.getElementById('confirmDispatchBtn').addEventListener('click',function(){
+        if(!document.getElementById('dispatchAcknowledgement').checked)return;
+        document.getElementById('dispatchModal').classList.remove('open');
+        document.querySelectorAll('#scheduleBody .status-chip').forEach(node=>{node.textContent='执行中';node.style.background='#dcfce7';node.style.color='#166534';});
+        showSuccessToast('调度方案已下发并进入执行监控');
+    });
+    document.getElementById('smartReportBtn').addEventListener('click', showSmartReport);
+    document.getElementById('closeReportModal').addEventListener('click', () => document.getElementById('reportModal').style.display = 'none');
+    document.getElementById('reportModal').addEventListener('click', e => { if (e.target === e.currentTarget) document.getElementById('reportModal').style.display = 'none'; });
+    document.getElementById('copyReportBtn').addEventListener('click', () => { navigator.clipboard.writeText(document.getElementById('reportContent').innerText); alert('✅ 报告已复制'); });
+    document.getElementById('exportPdfBtn').addEventListener('click', () => window.print());
+    document.querySelectorAll('.granularity-btn').forEach(btn => btn.addEventListener('click', function() {
+        document.querySelectorAll('.granularity-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active'); currentGranularity = this.getAttribute('data-granularity');
+        if (hasData && latestCalculation) updateDemandChart(latestCalculation.demandData, latestCalculation.timeContext.labels);
+    }));
+    document.getElementById('downloadSampleBtn').addEventListener('click', () => {
+        const sample = [['时间','功率(kW)','需水量(m³/h)'],['2026-03-26 00:00','45','65'],['2026-03-26 04:00','38','58'],['2026-03-26 08:00','85','95'],['2026-03-26 12:00','92','110'],['2026-03-26 16:00','72','98'],['2026-03-26 20:00','88','105']];
+        const blob = new Blob(['\uFEFF' + sample.map(r=>r.join(',')).join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'energy_schedule_sample.csv'; a.click();
+    });
+    
+    // 语音输入 - 即按即停
+    (function initVoiceBtn() {
+        const voiceBtn = document.getElementById('voiceBtn');
+        if (!voiceBtn) return;
+        
+        // 检查浏览器支持
+        const isSupported = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+        if (!isSupported) {
+            voiceBtn.style.display = 'none';
+            return;
+        }
+        
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+        let isRecording = false;
+        
+        function initRecognition() {
+            const recog = new SpeechRecognition();
+            recog.lang = 'zh-CN';
+            recog.continuous = false;
+            recog.interimResults = false;
+            
+            recog.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                const input = document.getElementById('dialogChatInput');
+                const dialog = document.getElementById('aiDialog');
+                dialog.style.display = 'flex';
+                input.value = transcript;
+                input.focus();
+            };
+            
+            recog.onerror = (e) => {
+                if (e.error !== 'aborted') {
+                    showToast('语音识别失败，请重试', 'error');
+                }
+            };
+            
+            recog.onend = stopRecording;
+            
+            return recog;
+        }
+        
+        function startRecording() {
+            if (!recognition) recognition = initRecognition();
+            try {
+                recognition.start();
+                isRecording = true;
+                voiceBtn.classList.add('recording');
+                voiceBtn.title = '松开停止录音';
+            } catch (e) {
+                console.log('开始录音失败:', e);
+            }
+        }
+        
+        function stopRecording() {
+            if (!isRecording) return;
+            try {
+                if (recognition) recognition.stop();
+            } catch (e) {}
+            isRecording = false;
+            voiceBtn.classList.remove('recording');
+            voiceBtn.title = '按住说话';
+        }
+        
+        // 鼠标事件
+        voiceBtn.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            startRecording();
+        });
+        voiceBtn.addEventListener('mouseup', stopRecording);
+        voiceBtn.addEventListener('mouseleave', stopRecording);
+        
+        // 触摸事件
+        voiceBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startRecording();
+        });
+        voiceBtn.addEventListener('touchend', stopRecording);
+        
+        voiceBtn.title = '按住说话';
+    })();
+    
+    // Toast提示函数
+    function showToast(msg, type = 'info') {
+        const toast = document.createElement('div');
+        const color = type === 'error' ? 'rgba(255,107,107,0.9)' : 'rgba(44,155,119,0.9)';
+        toast.style.cssText = `position:fixed;top:100px;right:30px;background:${color};color:white;padding:12px 24px;border-radius:40px;font-size:13px;z-index:1500;animation:slideIn 0.3s ease;box-shadow:0 4px 15px rgba(0,0,0,0.3);`;
+        toast.innerHTML = `<i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i> ${msg}`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+    
+    window.addEventListener('resize', () => { if (loadChart) loadChart.resize(); if (waterLevelChart) waterLevelChart.resize(); if (costCompareChart) costCompareChart.resize(); if (demandChart) demandChart.resize(); });
+    window.addEventListener('aquamind:data-ready', () => loadFromStorage());
+    window.addEventListener('aquamind:data-updated', () => loadFromStorage());
+    setTimeout(loadFromStorage, 100);
+});
+</script>
+
+<!-- 悬浮AI按钮和对话框 -->
+<button class="floating-ai-btn" id="aiFloatBtn" title="AI助手"><i class="fas fa-robot"></i></button>
+<div id="aiDialog" style="display: none; position: fixed; bottom: 100px; right: 30px; width: 380px; height: 520px; background: #ffffff; backdrop-filter: blur(12px); border-radius: 24px; border: 1px solid #e2e8f0; box-shadow: 0 10px 40px rgba(0,0,0,0.15); box-shadow: 0 10px 40px rgba(0,0,0,0.4); z-index: 1001; flex-direction: column; overflow: hidden; min-width: 300px; min-height: 350px; max-width: 800px; max-height: 90vh;">
+    <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 8px; font-weight: 600;"><i class="fas fa-robot" style="color: #0f8b9e;"></i><span>AI水务顾问</span><span style="font-size: 10px; background: rgba(91,192,255,0.2); padding: 2px 8px; border-radius: 20px;">GLM-4-Flash</span></div>
+        <button id="closeDialog" style="background: none; border: none; color: #64748b; font-size: 18px; cursor: pointer;">✕</button>
+    </div>
+    <div id="dialogChatMessages" style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px;"><div style="display: flex; justify-content: flex-start;"><div style="max-width: 85%; padding: 10px 14px; border-radius: 18px; background: #f1f5f9; color: #1e2a3a; border-bottom-left-radius: 4px; font-size: 13px;">🤖 你好，我是智慧水务AI助手！<br><br>可以问我关于水质、加药、设备健康、能效调度等方面的问题。</div></div></div>
+    <div style="padding: 16px; border-top: 1px solid #e2e8f0; display: flex; gap: 10px;"><input type="text" id="dialogChatInput" placeholder="输入问题，例如：分析当前水质..." style="flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 30px; padding: 10px 16px; color: #1e2a3a; font-size: 13px; outline: none;"><button id="dialogSendBtn" style="background: linear-gradient(135deg, #0e7b9e, #1baa7a); border: none; border-radius: 30px; padding: 0 18px; color: white; cursor: pointer;">发送</button></div>
+    <div class="resize-handle" id="resizeHandle"></div>
+</div>
+
+<style>
+.floating-ai-btn { position: fixed; bottom: 30px; right: 30px; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #0e7b9e, #1baa7a); display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; border: none; cursor: pointer; box-shadow: 0 4px 20px rgba(14, 123, 158, 0.4); transition: all 0.3s ease; z-index: 1000; }
+.floating-ai-btn:hover { transform: scale(1.1) rotate(-5deg); box-shadow: 0 6px 30px rgba(14, 123, 158, 0.6); }
+</style>
+
+<script>
+(function() {
+    const floatBtn = document.getElementById('aiFloatBtn'), dialog = document.getElementById('aiDialog'), closeBtn = document.getElementById('closeDialog'), sendBtn = document.getElementById('dialogSendBtn'), input = document.getElementById('dialogChatInput'), messages = document.getElementById('dialogChatMessages'), resizeHandle = document.getElementById('resizeHandle');
+    floatBtn.addEventListener('click', () => { dialog.style.display = dialog.style.display === 'flex' ? 'none' : 'flex'; if (dialog.style.display === 'flex') input.focus(); });
+    closeBtn.addEventListener('click', () => dialog.style.display = 'none');
+    let isResizing = false, startX, startY, startWidth, startHeight;
+    resizeHandle.addEventListener('mousedown', (e) => { isResizing = true; startX = e.clientX; startY = e.clientY; startWidth = parseInt(getComputedStyle(dialog).width, 10); startHeight = parseInt(getComputedStyle(dialog).height, 10); e.preventDefault(); });
+    document.addEventListener('mousemove', (e) => { if (!isResizing) return; const w = startWidth + e.clientX - startX, h = startHeight + e.clientY - startY; if (w >= 300 && w <= 800) dialog.style.width = w + 'px'; if (h >= 350 && h <= window.innerHeight * 0.9) dialog.style.height = h + 'px'; });
+    document.addEventListener('mouseup', () => isResizing = false);
+    function addMessage(t, u) { const d = document.createElement('div'); d.style.display = 'flex'; d.style.justifyContent = u ? 'flex-end' : 'flex-start'; d.innerHTML = '<div style="max-width: 85%; padding: 10px 14px; border-radius: 18px; font-size: 13px; line-height: 1.5; ' + (u ? 'background: linear-gradient(135deg, #0e7b9e, #1baa7a); color: white; border-bottom-right-radius: 4px;' : 'background: #f1f5f9; color: #1e2a3a; border-bottom-left-radius: 4px;') + '">' + t + '</div>'; messages.appendChild(d); messages.scrollTop = messages.scrollHeight; }
+    // 从 localStorage 读取数据并构建系统提示词
+    function generateSystemPrompt() {
+        const waterDataStr = localStorage.getItem('waterData');
+        if (!waterDataStr) {
+            return '你是智慧水务AI助手。当前暂无数据，请提示用户先上传CSV文件。';
+        }
+        
+        try {
+            const waterData = JSON.parse(waterDataStr);
+            if (!waterData.data || waterData.data.length === 0) {
+                return '你是智慧水务AI助手。当前暂无数据，请提示用户先上传CSV文件。';
+            }
+            
+            const data = waterData.data;
+            const latest = data[data.length - 1];
+            const first = data[0];
+            
+            // 检测列名
+            const headers = Object.keys(latest);
+            const turbidityCol = headers.find(h => /浊度|turbidity/i.test(h));
+            const dosageCol = headers.find(h => /加药| dosage|pac/i.test(h));
+            const phCol = headers.find(h => /ph|酸碱/i.test(h));
+            const timestampCol = headers.find(h => /时间|timestamp|date/i.test(h));
+            
+            // 计算统计数据
+            let currentTurbidity = null, avgTurbidity = null, maxTurbidity = null, exceedCount = 0;
+            if (turbidityCol) {
+                const turbidityVals = data.map(r => parseFloat(r[turbidityCol])).filter(v => !isNaN(v));
+                if (turbidityVals.length > 0) {
+                    currentTurbidity = parseFloat(latest[turbidityCol]);
+                    avgTurbidity = (turbidityVals.reduce((a,b) => a+b, 0) / turbidityVals.length).toFixed(2);
+                    maxTurbidity = Math.max(...turbidityVals).toFixed(2);
+                    exceedCount = turbidityVals.filter(v => v >= 5.0).length;
+                }
+            }
+            
+            let currentDosage = null;
+            if (dosageCol) {
+                currentDosage = parseFloat(latest[dosageCol]);
+            }
+            
+            // 构建提示词
+            let dataContext = `【实时水务数据】数据源: ${waterData.fileName || '未命名'}, 记录数: ${data.length}`;
+            if (timestampCol) {
+                dataContext += `, 数据时间范围: ${first[timestampCol]} 至 ${latest[timestampCol]}`;
+            }
+            if (currentTurbidity !== null) {
+                dataContext += `, 最新浊度: ${currentTurbidity.toFixed(2)} NTU`;
+            }
+            if (avgTurbidity !== null) {
+                dataContext += `, 平均浊度: ${avgTurbidity} NTU, 最高浊度: ${maxTurbidity} NTU, 超标次数(≥5.0): ${exceedCount}`;
+            }
+            if (currentDosage !== null && !isNaN(currentDosage)) {
+                dataContext += `, 最新加药量: ${currentDosage.toFixed(2)} mg/L`;
+            }
+            if (phCol) {
+                const phVal = parseFloat(latest[phCol]);
+                if (!isNaN(phVal)) {
+                    dataContext += `, 当前pH: ${phVal.toFixed(2)}`;
+                }
+            }
+            
+            return `你是智慧水务AI助手。${dataContext}。请基于这些实时数据回答用户问题，如果数据不足请明确告知。`;
+        } catch (e) {
+            return '你是智慧水务AI助手。当前数据读取异常，请提示用户重新上传CSV文件。';
+        }
+    }
+    
+    async function send() {
+        const text = input.value.trim();
+        if (!text) return;
+        addMessage(text, true);
+        input.value = '';
+        const loading = document.createElement('div'); loading.id = 'ai-loading'; loading.style.display = 'flex'; loading.style.justifyContent = 'flex-start'; loading.innerHTML = '<div style="padding: 10px 14px; border-radius: 18px; background: #f1f5f9; color: #64748b; font-size: 13px;">AI 正在思考...</div>'; messages.appendChild(loading); messages.scrollTop = messages.scrollHeight;
+        try {
+            const systemPrompt = generateSystemPrompt();
+            const res = await fetch('http://localhost:5000/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: [{role: 'system', content: systemPrompt}, {role: 'user', content: text}], temperature: 0.7, max_tokens: 2048 }) });
+            loading.remove();
+            if (res.ok) { const data = await res.json(); const reply = data.choices?.[0]?.message?.content || '抱歉，我暂时无法处理。'; addMessage(reply.replace(/\n/g, '<br>'), false); }
+            else addMessage('⚠️ AI 服务暂时不可用', false);
+        } catch(e) { loading.remove(); addMessage('⚠️ 无法连接到 AI 服务，请运行 python server.py', false); }
+    }
+    sendBtn.addEventListener('click', send);
+    input.addEventListener('keypress', e => { if (e.key === 'Enter') send(); });
+})();
+</script>
+
+<!-- 返回工艺地图按钮 -->
+<button onclick="location.href='process_map.html'" style="position: fixed; bottom: 160px; right: 20px; background: linear-gradient(135deg, #0f8b9e, #1faa7a); color: white; border: none; padding: 12px 24px; border-radius: 30px; cursor: pointer; font-size: 13px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; display: flex; align-items: center; gap: 8px;">
+    <i class="fas fa-map-marked-alt"></i> 返回工艺地图
+</button>
+
+</body>
+</html>

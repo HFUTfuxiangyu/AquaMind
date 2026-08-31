@@ -1,0 +1,1398 @@
+/**
+ * 智慧水务系统 - 主题样式
+ * 工业运行系统风格：信息密度高、状态清晰、操作直接
+ */
+
+:root {
+    /* 基础颜色 - 工业蓝绿色系 */
+    --bg-primary: #f0f4f8;
+    --bg-card: #ffffff;
+    --bg-hover: #f8fafc;
+
+    /* 文字颜色 */
+    --text-primary: #1e2a3a;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+
+    /* 品牌色 - 青蓝绿渐变 */
+    --accent-primary: #0f8b9e;
+    --accent-secondary: #1faa7a;
+    --accent-light: #e0f7fa;
+
+    /* 边框颜色 */
+    --border-color: #e2e8f0;
+    --border-hover: #cbd5e1;
+
+    /* 状态颜色 - 统一语义 */
+    --status-danger: #ef4444;      /* 红色：严重/超标 */
+    --status-warning: #f59e0b;     /* 橙色：预警 */
+    --status-info: #3b82f6;        /* 蓝色：提示 */
+    --status-success: #1faa7a;     /* 绿色：正常 */
+
+    /* 阴影 - 减少厚重感 */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
+
+    /* 圆角 - 控制在 6-8px，减少大圆角 */
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+
+    /* 颜色语义别名 - 用于减少渐变使用 */
+    --border: var(--border-color);
+    --accent: var(--accent-primary);
+    --success: var(--status-success);
+    --danger: var(--status-danger);
+    --warning: var(--status-warning);
+    --info: var(--status-info);
+    --text-primary: var(--text-primary);
+    --text-secondary: var(--text-secondary);
+    --text-muted: var(--text-muted);
+
+    /* 过渡动画 */
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.2s ease;
+    --transition-slow: 0.3s ease;
+}
+
+/* 重置样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+    border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--text-muted);
+    border-radius: var(--radius-sm);
+    transition: background var(--transition-fast);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}
+
+/* 通用容器 */
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.page-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* 卡片样式 */
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-normal);
+}
+
+.card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+/* 按钮基础样式 */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 20px;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    font-family: inherit;
+    white-space: nowrap;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(15, 139, 158, 0.3);
+    opacity: 0.95;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+.btn-outline:hover {
+    background: var(--accent-light);
+}
+
+.btn-secondary {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: var(--border-color);
+}
+
+/* 状态标签 */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.status-badge.danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--status-danger);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.status-badge.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--status-warning);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.status-badge.info {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--status-info);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.status-badge.success {
+    background: rgba(31, 170, 122, 0.1);
+    color: var(--status-success);
+    border: 1px solid rgba(31, 170, 122, 0.2);
+}
+
+/* 数据源状态标识 */
+.data-source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.data-source-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--status-success);
+}
+
+.data-source-badge.realtime::before {
+    background: var(--status-success);
+    animation: pulse-dot 1.5s infinite;
+}
+
+.data-source-badge.csv::before {
+    background: var(--accent-primary);
+}
+
+.data-source-badge.simulated::before {
+    background: var(--status-warning);
+}
+
+.data-source-badge.predicted::before {
+    background: var(--status-info);
+}
+
+.data-source-badge.offline::before {
+    background: var(--text-muted);
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* 工具提示 */
+.tooltip {
+    position: relative;
+    cursor: help;
+}
+
+.tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-4px);
+    background: var(--text-primary);
+    color: white;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--transition-fast);
+    z-index: 100;
+    pointer-events: none;
+}
+
+.tooltip:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* 表格样式 */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.data-table th,
+.data-table td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.data-table th {
+    background: var(--bg-hover);
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.data-table tbody tr:hover {
+    background: var(--bg-hover);
+}
+
+.data-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* 图表容器 */
+.chart-wrapper {
+    position: relative;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 16px;
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.chart-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.chart-meta {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.chart-container {
+    height: 220px;
+    width: 100%;
+    position: relative;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+    .container,
+    .page-container {
+        padding: 0 12px;
+    }
+
+    .btn {
+        padding: 6px 16px;
+        font-size: 12px;
+    }
+}
+
+/* 加载状态 */
+.loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--accent-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* 空状态 */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+}
+
+.empty-state i {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+.empty-state p {
+    font-size: 14px;
+}
+
+/* 渐变文字 */
+.gradient-text {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: 700;
+}
+
+/* 图标辅助类 */
+.icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-sm {
+    font-size: 12px;
+}
+
+.icon-md {
+    font-size: 16px;
+}
+
+.icon-lg {
+    font-size: 20px;
+}
+
+/* 数据状态栏 */
+.data-status-container {
+    margin-bottom: 16px;
+}
+
+.data-status-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    font-size: 12px;
+    flex-wrap: wrap;
+}
+
+.data-status-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.data-status-divider {
+    color: var(--text-muted);
+    margin: 0 4px;
+}
+
+/* 数据源状态 */
+.data-status-source {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    background: var(--bg-hover);
+    transition: all var(--transition-normal);
+}
+
+.data-status-source.data-status-pulse .data-status-source-icon {
+    animation: status-pulse 1.5s infinite;
+}
+
+@keyframes status-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* APN 状态 */
+.data-status-apn,
+.data-status-llm {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    background: var(--bg-hover);
+    transition: all var(--transition-normal);
+}
+
+/* 工业风格优化 - 减少装饰性元素 */
+.chart-enhanced {
+    position: relative;
+}
+
+.chart-enhanced::before {
+    content: '📊';
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    font-size: 16px;
+    opacity: 0.5;
+    z-index: 1;
+}
+
+/* 工业风格 - 关键强调保留渐变 */
+.emphasis-gradient {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    color: white;
+    border: none;
+}
+
+.emphasis-gradient:hover {
+    opacity: 0.9;
+}
+
+/* 工业风格 - 告警横幅保持渐变 */
+.alert-gradient {
+    background: linear-gradient(90deg, var(--status-danger), rgba(239, 68, 68, 0.8));
+}
+
+.warning-gradient {
+    background: linear-gradient(90deg, var(--status-warning), rgba(245, 158, 11, 0.8));
+}
+
+/* 工业风格 - 关键图表指示器 */
+.chart-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: var(--bg-hover);
+    border-radius: var(--radius-sm);
+    font-size: 10px;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.chart-indicator.unit {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.chart-indicator.threshold {
+    color: var(--status-warning);
+    font-weight: 600;
+}
+
+.chart-indicator.normal {
+    color: var(--status-success);
+    font-weight: 600;
+}
+
+/* 工业风格 - 紧凑信息显示 */
+.compact-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.compact-info .value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.compact-info .label {
+    opacity: 0.8;
+}
+
+/* 工业风格 - 状态徽章 */
+.indicator-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 10px;
+    font-weight: 500;
+    background: var(--bg-hover);
+    border: 1px solid var(--border-color);
+}
+
+.indicator-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.indicator-badge.danger::before {
+    background: var(--status-danger);
+}
+
+.indicator-badge.warning::before {
+    background: var(--status-warning);
+}
+
+.indicator-badge.info::before {
+    background: var(--status-info);
+}
+
+.indicator-badge.success::before {
+    background: var(--status-success);
+}
+
+.indicator-badge.neutral::before {
+    background: var(--text-muted);
+}
+
+/* 工业风格 - 数据卡片优化 */
+.data-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-normal);
+}
+
+.data-card:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--accent-primary);
+}
+
+.data-card .data-card-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.data-card .data-card-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.data-card .data-card-unit {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-secondary);
+    margin-left: 4px;
+}
+
+/* 工业风格 - 去除过度装饰 */
+.clean-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    box-shadow: var(--shadow-sm);
+}
+
+.clean-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+/* 工业风格 - 简化按钮 */
+.clean-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.clean-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+/* 工业风格 - 警告卡片 */
+.alert-card {
+    border-left: 4px solid var(--status-danger);
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    box-shadow: var(--shadow-sm);
+}
+
+.alert-card.warning {
+    border-left-color: var(--status-warning);
+}
+
+.alert-card.info {
+    border-left-color: var(--status-info);
+}
+
+.alert-card.success {
+    border-left-color: var(--status-success);
+}
+
+/* 工业风格 - 状态条 */
+.status-bar-compact {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+}
+
+.status-bar-compact .status-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* 工业风格 - 信息密度优化 */
+.info-dense {
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.info-dense .label {
+    color: var(--text-secondary);
+    font-size: 11px;
+}
+
+.info-dense .value {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+/* 工业风格 - 紧凑布局 */
+.layout-compact {
+    gap: 12px;
+}
+
+.grid-compact {
+    gap: 12px;
+}
+
+/* 工业风格 - 移除装饰性动画 */
+.no-decoration {
+    animation: none;
+    transition: none;
+}
+
+/* 工业风格 - 统一边框 */
+.unified-border {
+    border: 1px solid var(--border-color);
+}
+
+.unified-border-hover:hover {
+    border-color: var(--accent-primary);
+}
+
+/* 工业风格 - 关键数据突出 */
+.key-metric {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.1;
+}
+
+.key-metric.secondary {
+    font-size: 20px;
+}
+
+.key-metric.tertiary {
+    font-size: 16px;
+}
+
+/* 工业风格 - 趋势指示 */
+.trend-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.trend-indicator.up {
+    color: var(--status-success);
+}
+
+.trend-indicator.down {
+    color: var(--status-danger);
+}
+
+.trend-indicator.neutral {
+    color: var(--text-muted);
+}
+
+/* 工业风格 - 分隔线 */
+.divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 16px 0;
+}
+
+.divider-thin {
+    height: 1px;
+    background: var(--border-color);
+    margin: 12px 0;
+    opacity: 0.5;
+}
+
+/* 工业风格 - 卡片标题 */
+.card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.card-title-icon {
+    color: var(--accent-primary);
+    font-size: 14px;
+}
+
+/* 工业风格 - 卡片内容区域 */
+.card-content {
+    padding: 0;
+}
+
+/* 工业风格 - 操作栏 */
+.action-bar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-hover);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+}
+
+/* 工业风格 - 状态面板 */
+.status-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    box-shadow: var(--shadow-sm);
+}
+
+.status-panel .status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.status-panel .status-row:last-child {
+    margin-bottom: 0;
+}
+
+/* 工业风格 - 进度条 */
+.progress-bar-industrial {
+    height: 6px;
+    background: var(--border-color);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.progress-fill-industrial {
+    height: 100%;
+    border-radius: var(--radius-sm);
+    transition: width var(--transition-normal);
+    background: var(--accent-primary);
+}
+
+.progress-fill-industrial.warning {
+    background: var(--status-warning);
+}
+
+.progress-fill-industrial.danger {
+    background: var(--status-danger);
+}
+
+/* 工业风格 - 徽章表格 */
+.table-industrial {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.table-industrial th,
+.table-industrial td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.table-industrial th {
+    background: var(--bg-hover);
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.table-industrial tbody tr:hover {
+    background: var(--bg-hover);
+}
+
+/* 工业风格 - 状态单元格 */
+.cell-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+}
+
+.cell-status.danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--status-danger);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.cell-status.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--status-warning);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.cell-status.info {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--status-info);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.cell-status.success {
+    background: rgba(31, 170, 122, 0.1);
+    color: var(--status-success);
+    border: 1px solid rgba(31, 170, 122, 0.2);
+}
+
+/* 工业风格 - 时间标签 */
+.time-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 10px;
+    color: var(--text-secondary);
+    font-family: var(--font-family-mono);
+}
+
+/* 工业风格 - 芯点标记 */
+.node-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 10px;
+    font-weight: 500;
+}
+
+/* 工业风格 - 图表图例 */
+.chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 12px 16px;
+    background: var(--bg-hover);
+    border-radius: var(--radius-sm);
+    margin-top: 12px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+}
+
+.legend-dot.real {
+    background: var(--accent-primary);
+}
+
+.legend-dot.predicted {
+    background: var(--status-info);
+}
+
+.legend-dot.threshold {
+    background: var(--status-warning);
+}
+
+/* 工业风格 - 阈值线标注 */
+.threshold-label {
+    font-size: 10px;
+    color: var(--status-warning);
+    font-weight: 600;
+}
+
+/* 工业风格 - 更新时间戳 */
+.update-timestamp {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--font-family-mono);
+}
+
+/* 工业风格 - 缺失数据提示 */
+.no-data-indicator {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.no-data-indicator i {
+    font-size: 32px;
+    margin-bottom: 8px;
+    opacity: 0.5;
+}
+
+/* 工业风格 - 统一的告警横幅 */
+.alert-banner {
+    background: linear-gradient(90deg, var(--status-danger), rgba(239, 68, 68, 0.8));
+    color: white;
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-md);
+}
+
+.alert-banner.warning {
+    background: linear-gradient(90deg, var(--status-warning), rgba(245, 158, 11, 0.8));
+}
+
+.alert-banner.info {
+    background: linear-gradient(90deg, var(--status-info), rgba(59, 130, 246, 0.8));
+}
+
+.alert-banner.success {
+    background: linear-gradient(90deg, var(--status-success), rgba(31, 170, 122, 0.8));
+}
+
+.alert-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.alert-content i {
+    font-size: 18px;
+    animation: alert-pulse 2s infinite;
+}
+
+@keyframes alert-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* 工业风格 - 快捷操作组 */
+.quick-actions-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.quick-action-chip {
+    padding: 4px 12px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.quick-action-chip:hover {
+    background: var(--accent-light);
+    color: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+
+/* 工业风格 - 紧凑的表单控件 */
+.form-control-compact {
+    padding: 6px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-family: inherit;
+}
+
+.form-control-compact:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px rgba(15, 139, 158, 0.2);
+}
+
+/* 工业风格 - 工具栏 */
+.toolbar-compact {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+}
+
+.toolbar-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--border-color);
+    margin: 0 4px;
+}
+
+/* 工业风格 - 状态图标 */
+.status-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    font-size: 10px;
+}
+
+.status-icon.danger {
+    background: var(--status-danger);
+    color: white;
+}
+
+.status-icon.warning {
+    background: var(--status-warning);
+    color: white;
+}
+
+.status-icon.info {
+    background: var(--status-info);
+    color: white;
+}
+
+.status-icon.success {
+    background: var(--status-success);
+    color: white;
+}
+
+/* 工业风格 - 数据网格 */
+.data-grid {
+    display: grid;
+    gap: 12px;
+}
+
+.grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.grid-6 {
+    grid-template-columns: repeat(6, 1fr);
+}
+
+/* 工业风格 - 弹窗优化 */
+.modal-industrial {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    max-width: 600px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header-industrial {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header-industrial h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.modal-body-industrial {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.modal-footer-industrial {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+/* 工业风格 - 表单标签 */
+.form-label-compact {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.form-label-compact.required::after {
+    content: ' *';
+    color: var(--status-danger);
+    margin-left: 2px;
+}
+
+/* 工业风格 - 工具提示条 */
+.hint-bar {
+    background: var(--accent-light);
+    border: 1px solid var(--accent-primary);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    font-size: 11px;
+    color: var(--accent-primary);
+    margin-bottom: 12px;
+}
+
+/* 工业风格 - 警告图标 */
+.warning-icon-large {
+    font-size: 48px;
+    color: var(--status-warning);
+    margin-bottom: 16px;
+}
+
+.success-icon-large {
+    font-size: 48px;
+    color: var(--status-success);
+    margin-bottom: 16px;
+}
+
+.danger-icon-large {
+    font-size: 48px;
+    color: var(--status-danger);
+    margin-bottom: 16px;
+}
+
+.info-icon-large {
+    font-size: 48px;
+    color: var(--status-info);
+    margin-bottom: 16px;
+}
+
+/* 进度条样式 */
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--accent-primary);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+/* 芯片/标签样式 */
+.chip {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--accent-light);
+    color: var(--accent-primary);
+    border: 1px solid var(--border-color);
+}
+
+.chip-primary {
+    background: var(--accent-primary);
+    color: white;
+    border: none;
+}
+
+.chip-success {
+    background: rgba(31, 170, 122, 0.1);
+    color: var(--status-success);
+    border-color: var(--status-success);
+}
+
+.chip-warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--status-warning);
+    border-color: var(--status-warning);
+}
+
+.chip-danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--status-danger);
+    border-color: var(--status-danger);
+}
+
+/* 小按钮样式 */
+.btn-small {
+    padding: 4px 12px;
+    font-size: 12px;
+    border-radius: 6px;
+    border: 1px solid var(--accent-primary);
+    background: rgba(15, 139, 158, 0.1);
+    color: var(--accent-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-small:hover {
+    background: var(--accent-primary);
+    color: white;
+}
+
+/* 圆形容器（仅用于特殊情况） */
+.round-full {
+    border-radius: 50%;
+}
+
+/* 渐变文本（减少使用） */
+.gradient-text {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+/* 状态指示器 */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border-color);
+}
+
+.status-dot.active {
+    background: var(--status-success);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}

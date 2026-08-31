@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智慧水务 | 水厂工艺地理图</title>
+    <link rel="stylesheet" href="assets/css/system-fonts.css">
+    <link rel="stylesheet" href="assets/css/font-awesome.min.css">
+    <!-- 公共样式文件 -->
+    <link rel="stylesheet" href="styles/theme.css">
+    <link rel="stylesheet" href="styles/layout.css">
+    <link rel="stylesheet" href="styles/ai-assistant.css">
+    <script src="components/auth.js"></script>
+    <script src="shared-data.js"></script>
+    <script src="components/sidebar-nav.js"></script>
+    <script src="components/ai-assistant.js"></script>
+    <script src="components/data-status.js"></script>
+    <style>
+        /* 页面特定样式 - 公共样式已在 theme.css 和 layout.css 中定义 */
+        /* 地理地图 */
+        .geo-map {
+            background: white;
+            border-radius: var(--radius-md);
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-sm);
+        }
+        .map-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .map-container {
+            position: relative;
+            height: 620px;
+            background: linear-gradient(135deg, #e6f7f0 0%, #d4f1f9 50%, #e8f4f8 100%);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.05);
+        }
+        /* 河流 */
+        .river {
+            position: absolute;
+            background: linear-gradient(90deg, #3b82f6, #06b6d4, #3b82f6);
+            height: 60px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 1;
+            opacity: 0.3;
+            box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+        }
+        .river::after {
+            content: '河流流向 →';
+            opacity: 0.8;
+        }
+        .facility-photo {
+            position: absolute;
+            width: 190px;
+            height: 104px;
+            transform: translate(-50%, -50%);
+            z-index: 5;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px dashed rgba(15, 139, 158, 0.45);
+            background: rgba(255, 255, 255, 0.72);
+            box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+            pointer-events: none;
+        }
+        .facility-photo img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .facility-photo.has-image {
+            border-style: solid;
+            background: #ffffff;
+        }
+        .facility-photo.has-image .photo-placeholder {
+            display: none;
+        }
+        .photo-placeholder {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            color: #0f8b9e;
+            text-align: center;
+            padding: 10px;
+        }
+        .photo-placeholder i {
+            font-size: 22px;
+        }
+        /* 设施标记 */
+        .facility {
+            position: absolute;
+            background: white;
+            border-radius: 16px;
+            padding: 12px 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            z-index: 10;
+            border: 2px solid #e2e8f0;
+            min-width: 160px;
+        }
+        .facility:hover {
+            transform: scale(1.05);
+            border-color: #0f8b9e;
+            box-shadow: 0 8px 24px rgba(15,139,158,0.2);
+        }
+        .facility-icon { font-size: 24px; color: #0f8b9e; }
+        .facility-info .name { font-weight: 700; font-size: 14px; }
+        .facility-info .page { font-size: 11px; color: #64748b; margin-top: 2px; }
+        .facility-badge {
+            background: linear-gradient(135deg, #0f8b9e, #1faa7a);
+            color: white;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 20px;
+            margin-left: 8px;
+        }
+        @media (max-width: 1200px) {
+            .facility-photo {
+                width: 150px;
+                height: 84px;
+            }
+            .facility {
+                min-width: 138px;
+                padding: 10px 12px;
+            }
+        }
+
+        /* 图例说明 */
+        .legend {
+            display: flex;
+            gap: 24px;
+            margin-top: 16px;
+            padding: 12px 16px;
+            background: var(--bg-hover);
+            border-radius: var(--radius-md);
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .legend-dot.intake { background: #3b82f6; }
+        .legend-dot.process { background: #0f8b9e; }
+        .legend-dot.delivery { background: #1faa7a; }
+
+        /* 高亮设施样式 */
+        .facility-highlight {
+            background: linear-gradient(135deg, #ffffff, #f0fdf4) !important;
+            border: 2px solid #1faa7a !important;
+            transform: translate(-50%, -50%) scale(1.05) !important;
+            z-index: 20 !important;
+        }
+        
+        @keyframes pulse-highlight {
+            0%, 100% { box-shadow: 0 0 20px rgba(31,170,122,0.4); }
+            50% { box-shadow: 0 0 30px rgba(31,170,122,0.6), 0 0 40px rgba(31,170,122,0.3); }
+        }
+        
+        /* 说明卡片 */
+        .intro-card {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: var(--radius-md);
+            padding: 20px 24px;
+            color: white;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-md);
+        }
+        .intro-card h3 { margin-bottom: 12px; font-size: 18px; }
+        .intro-card p { font-size: 13px; opacity: 0.95; line-height: 1.6; }
+
+        /* 快速入口 */
+        .quick-access {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .quick-access .btn {
+            text-align: center;
+            white-space: nowrap;
+            border-radius: var(--radius-md);
+        }
+        
+        @media (max-width: 1200px) {
+            .quick-access {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        @media (max-width: 768px) {
+            .quick-access {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+<!-- 侧边栏和顶部栏由 sidebar-nav.js 自动生成 -->
+<div class="container">
+    <!-- 强引导说明卡片 -->
+    <div class="intro-card">
+        <h3><i class="fas fa-hand-pointer"></i> 欢迎使用智慧水务系统</h3>
+        <p style="font-size: 15px; margin-bottom: 12px;"><strong>👇 点击地图上的任意设施，进入对应的功能管理界面</strong></p>
+        <p>💡 <strong>推荐入口：</strong>点击下方的<span style="background: rgba(255,255,255,0.3); padding: 2px 8px; border-radius: 4px;">🧠 智慧大脑</span>进入<strong>智能驾驶舱</strong>，查看系统全局状态</p>
+        <p style="font-size: 16px; margin-top: 14px; font-weight: 600;">
+            <i class="fas fa-mouse-pointer"></i> 点击地图上的任意设施，进入对应的功能管理界面
+        </p>
+    </div>
+
+    <!-- 地理地图 -->
+    <div class="geo-map">
+        <div class="map-title">
+            <i class="fas fa-map-marked-alt" style="color: #0f8b9e;"></i> 水厂设施地理分布
+            <span style="font-size: 12px; color: #64748b; margin-left: auto;">💡 点击任意设施进入功能页面</span>
+        </div>
+        <div class="map-container" id="mapContainer">
+            <!-- 河流 -->
+            <div class="river" style="width: 90%; left: 5%; top: 42%; height: 60px;"></div>
+            <!-- 设施标记将动态生成 -->
+        </div>
+        <div class="legend">
+            <div class="legend-item"><div class="legend-dot intake"></div><span>取水/水源地</span></div>
+            <div class="legend-item"><div class="legend-dot process"></div><span>处理工艺单元</span></div>
+            <div class="legend-item"><div class="legend-dot delivery"></div><span>供水/输送</span></div>
+            <div class="legend-item"><i class="fas fa-mouse-pointer" style="color: #0f8b9e;"></i><span>点击跳转到功能页面</span></div>
+        </div>
+    </div>
+
+    
+</div>
+
+<script>
+    // 设施数据 - 每个设施对应一个功能页面
+    const facilities = [
+        { 
+            id: 'intake', 
+            name: '取水口', 
+            page: 'smart_water_system_v2.html', 
+            icon: 'fa-water', 
+            x: 10, 
+            y: 37, 
+            desc: '水质预警', 
+            color: '#3b82f6',
+            photoSrc: 'assets/process-photos/intake.jpg',
+            photoLabel: '取水口现场图',
+            photoY: 23
+        },
+        { 
+            id: 'coagulation', 
+            name: '混凝池', 
+            page: 'ai_dosage.html', 
+            icon: 'fa-flask', 
+            x: 21, 
+            y: 57, 
+            desc: 'AI加药优化', 
+            color: '#0f8b9e',
+            photoSrc: 'assets/process-photos/coagulation.jpg',
+            photoLabel: '混凝池现场图',
+            photoY: 71
+        },
+        { 
+            id: 'sedimentation', 
+            name: '沉淀池', 
+            page: 'smart_water_system_v2.html', 
+            icon: 'fa-layer-group', 
+            x: 32, 
+            y: 37, 
+            desc: '水质监测', 
+            color: '#0f8b9e',
+            photoSrc: 'assets/process-photos/sedimentation.jpg',
+            photoLabel: '沉淀池现场图',
+            photoY: 23
+        },
+        { 
+            id: 'filtration', 
+            name: '滤池', 
+            page: 'device_health.html', 
+            icon: 'fa-filter', 
+            x: 43, 
+            y: 57, 
+            desc: '设备健康', 
+            color: '#0f8b9e',
+            photoSrc: 'assets/process-photos/filtration.jpg',
+            photoLabel: '滤池现场图',
+            photoY: 71
+        },
+        { 
+            id: 'disinfection', 
+            name: '消毒间', 
+            page: 'ai_dosage.html', 
+            icon: 'fa-biohazard', 
+            x: 54, 
+            y: 37, 
+            desc: 'AI加药优化', 
+            color: '#0f8b9e',
+            photoSrc: 'assets/process-photos/disinfection.jpg',
+            photoLabel: '消毒间现场图',
+            photoY: 23
+        },
+        { 
+            id: 'clearwell', 
+            name: '清水池', 
+            page: 'data_insight.html', 
+            icon: 'fa-database', 
+            x: 65, 
+            y: 57, 
+            desc: '数据洞察', 
+            color: '#0f8b9e',
+            photoSrc: 'assets/process-photos/clearwell.jpg',
+            photoLabel: '清水池现场图',
+            photoY: 71
+        },
+        { 
+            id: 'delivery', 
+            name: '供水泵房', 
+            page: 'energy_schedule.html', 
+            icon: 'fa-truck-pumping', 
+            x: 76, 
+            y: 37, 
+            desc: '能效调度', 
+            color: '#1faa7a',
+            photoSrc: 'assets/process-photos/delivery.jpg',
+            photoLabel: '供水泵房现场图',
+            photoY: 23
+        },
+        { 
+            id: 'dashboard', 
+            name: '智慧大脑', 
+            page: 'smart_water_system.html', 
+            icon: 'fa-brain',
+            x: 90, 
+            y: 48, 
+            desc: '智能驾驶舱', 
+            color: '#1faa7a'
+        }
+    ];
+
+    // 生成地图上的设施标记
+    function renderMap() {
+        const container = document.getElementById('mapContainer');
+        if (!container) return;
+        container.querySelectorAll('.facility, .facility-photo').forEach(marker => marker.remove());
+        
+        facilities.forEach(f => {
+            if (f.photoSrc) {
+                const photo = document.createElement('div');
+                photo.className = 'facility-photo';
+                photo.style.left = f.x + '%';
+                photo.style.top = (f.photoY || 15) + '%';
+                photo.innerHTML = `
+                    <img src="${f.photoSrc}" alt="${f.photoLabel}" onload="this.parentElement.classList.add('has-image')" onerror="this.hidden=true; this.parentElement.classList.add('is-empty')">
+                    <div class="photo-placeholder">
+                        <i class="fas fa-image"></i>
+                    </div>
+                `;
+                container.appendChild(photo);
+            }
+
+            const marker = document.createElement('div');
+            // 智慧大脑使用特殊高亮样式
+            const isDashboard = f.id === 'dashboard';
+            marker.className = isDashboard ? 'facility facility-highlight' : 'facility';
+            marker.style.left = f.x + '%';
+            marker.style.top = f.y + '%';
+            marker.style.transform = 'translate(-50%, -50%)';
+            marker.style.borderLeft = `4px solid ${f.color}`;
+            
+            // 智慧大脑添加推荐标签
+            const badgeHtml = isDashboard 
+                ? `<span class="facility-badge" style="background: linear-gradient(135deg, #ff6b6b, #ffaa44);">推荐入口</span>`
+                : `<span class="facility-badge">${f.desc}</span>`;
+            
+            const clickText = isDashboard ? '点击进入' : '点击进入';
+            
+            marker.innerHTML = `
+                <div class="facility-icon" style="${isDashboard ? 'font-size: 28px; color: #1faa7a;' : ''}"><i class="fas ${f.icon}"></i></div>
+                <div class="facility-info">
+                    <div class="name" style="${isDashboard ? 'font-size: 16px;' : ''}">${f.name} ${badgeHtml}</div>
+                    <div class="page">${clickText}</div>
+                </div>
+            `;
+            
+            // 智慧大脑添加脉冲动画效果
+            if (isDashboard) {
+                marker.style.animation = 'pulse-highlight 2s infinite';
+                marker.style.boxShadow = '0 0 20px rgba(31,170,122,0.4)';
+            }
+            
+            marker.onclick = () => {
+                window.location.href = f.page;
+            };
+            container.appendChild(marker);
+        });
+    }
+
+    function initProcessMap() {
+        renderMap();
+
+        // 添加欢迎提示
+        if (!localStorage.getItem('processMapVisited')) {
+            setTimeout(() => {
+                alert('👋 欢迎使用智慧水务系统！\n\n点击地图上的任意设施，即可进入对应的功能管理页面。\n\n底部还有快速入口按钮，方便您直达各个功能模块。');
+                localStorage.setItem('processMapVisited', 'true');
+            }, 500);
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initProcessMap);
+    } else {
+        initProcessMap();
+    }
+</script>
+</body>
+</html>
